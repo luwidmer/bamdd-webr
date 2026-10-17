@@ -1,0 +1,263 @@
+# Build the seven wasm packages that have no usable upstream build (five cross-compiled,
+# two first-party), and publish them as a Release asset that deploy.yml consumes.
+#
+# Runs a handful of times a year, needs no Cloudflare credentials, and opens a pull
+# request with the regenerated lib/MANIFEST.tsv rather than committing it: R CMD INSTALL
+# output is not byte-reproducible, so every rebuild changes all seven sha256 sums, and the
+# manifest diff is this project's only drift detection.
+#
+# Nothing here changes when deploy.yml gains its push/pull_request triggers
+# (DEPLOY.md, "Bringing it up", step 3).
+name: wasm repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      rbest_ref:
+        description: Novartis/RBesT git ref providing the Emscripten build image
+        default: v1.12-0
+      rbest_version:
+        description: RBesT CRAN version to cross-compile
+        default: 1.12-0
+      oncobayes2_version:
+        default: 0.10-0
+      jinjar_version:
+        default: 0.3.2
+      webr_tag:
+        description: must match WEBR_VERSION in tools/fetch-webr.sh
+        default: v0.6.0
+
+permissions:
+  contents: read
+
+jobs:
+  # Modelled on Novartis/RBesT's .github/workflows/webr-image.yaml, which runs the same
+  # harness on the same runner. No image cache: rare runs, and from scratch is reproducible.
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      WEBR_TAG: ${{ inputs.webr_tag }}
+      # Inputs reach the shell as variables, never as interpolated script text.
+      RBEST_REF: ${{ inputs.rbest_ref }}
+      RBEST_VERSION: ${{ inputs.rbest_version }}
+      ONCOBAYES2_VERSION: ${{ inputs.oncobayes2_version }}
+      JINJAR_VERSION: ${{ inputs.jinjar_version }}
+    outputs:
+      tag: ${{ steps.pack.outputs.tag }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      # The toolchain image and the package builds outgrow the runner's free disk.
+      - name: Reclaim runner disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/boost /usr/local/.ghcup
+          df -h /
+
+      # tools/build-wasm-pkg.sh resolves the image recipe at $root/vendor/BesT.
+      - name: Fetch the RBesT build harness
+        run: |
+          git clone --depth 1 --branch "$RBEST_REF" \
+            https://github.com/Novartis/RBesT.git vendor/BesT
+
+      # tools/build-first-party.R refuses to run unless the host R minor matches webR's.
+      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        with:
+          r-version: '4.6.0'
+          use-public-rspm: true
+
+      # usethis is what RBesT's tools/make-ds.R calls.
+      - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        with:
+          packages: any::rstantools, any::usethis, github::r-wasm/rwasm
+          dependencies: '"hard"'
+
+      # data/*.rda and R/sysdata.rda are generated, not tracked, and .onAttach() reads
+      # pkg_create_date out of the latter -- without this RBesT installs then fails to load.
+      - name: Generate RBesT data
+        working-directory: vendor/BesT
+        run: Rscript tools/make-ds.R
+
+      - name: Build the Emscripten image
+        working-directory: vendor/BesT/tools/webr/docker
+        env:
+          RBEST_SRC: ${{ github.workspace }}/vendor/BesT
+        run: docker compose build
+
+      # RBEST_OUT must match tools/vendor-wasm-repo.R's default lookup path.
+      - name: Cross-compile rstan and StanHeaders
+        working-directory: vendor/BesT/tools/webr/docker
+        env:
+          RBEST_SRC: ${{ github.workspace }}/vendor/BesT
+          RBEST_OUT: ${{ github.workspace }}/vendor/BesT/build/webr/output
+          RBEST_VARIANTS: notbb
+        run: |
+          mkdir -p "$RBEST_OUT"
+          docker compose run --rm build
+
+      - name: Cross-compile RBesT, OncoBayes2 and jinjar
+        env:
+          WASM_PKG_STAN: '1'
+        run: |
+          tools/build-wasm-pkg.sh RBesT "$RBEST_VERSION"
+          tools/build-wasm-pkg.sh OncoBayes2 "$ONCOBAYES2_VERSION"
+          WASM_PKG_STAN= tools/build-wasm-pkg.sh jinjar "$JINJAR_VERSION"
+
+      # The containers write as root.
+      - name: Take ownership of the Docker output
+        if: always()
+        run: |
+          for d in vendor/BesT/build build/wasm-build; do
+            if [ -e "$d" ]; then sudo chown -R "$(id -u):$(id -g)" "$d"; fi
+          done
+
+      - name: Build stanliWebR and miraiWebR
+        run: Rscript tools/build-first-party.R
+
+      - name: Assemble vendor/wasm-repo
+        run: Rscript tools/vendor-wasm-repo.R
+
+      # Laid out as <tag>/<tag>.tar.gz, the Release download path fetch-wasm-repo.sh expects.
+      - name: Pack the bundle
+        id: pack
+        run: |
+          tag="wasm-repo-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+          mkdir -p "bundle/$tag"
+          tar czf "bundle/$tag/$tag.tar.gz" vendor/wasm-repo
+          sha="$(sha256sum "bundle/$tag/$tag.tar.gz" | cut -d' ' -f1)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          tar tzf "bundle/$tag/$tag.tar.gz" | grep -c 'contrib/4.6/.*\.tgz$'
+
+      # --resolve re-queries the four remote repositories, so the diff may also carry
+      # unrelated r-universe movement. That is exactly what wants reviewing.
+      - name: Re-resolve the manifest and pin the bundle
+        env:
+          TAG: ${{ steps.pack.outputs.tag }}
+          SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          Rscript tools/build-library.R --resolve
+          printf '%s\n' \
+            '# Written by .github/workflows/wasm-repo.yml; see "The wasm package bundle" in DEPLOY.md.' \
+            "TAG=$TAG" "SHA256=$SHA256" > lib/WASM_REPO
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bundle
+          path: |
+            bundle/
+            lib/MANIFEST.tsv
+            lib/WASM_REPO
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: build-logs
+          path: |
+            vendor/BesT/build/webr/output/*.log
+            vendor/BesT/build/webr/output/*.csv
+            build/wasm-build/**/*.log
+          if-no-files-found: ignore
+
+  # Builds the site from the bundle exactly as deploy.yml will, before anything is published.
+  verify:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: bundle
+
+      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        with:
+          r-version: '4.6.0'
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        with:
+          packages: github::r-wasm/rwasm
+          dependencies: '"hard"'
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Fetch webR and the UI libraries
+        run: |
+          bash tools/fetch-webr.sh
+          bash tools/fetch-ui-libs.sh
+
+      - name: Unpack the bundle as deploy.yml would
+        run: WASM_REPO_BASE="file://$GITHUB_WORKSPACE/bundle" bash tools/fetch-wasm-repo.sh
+
+      - name: Build and pack the library
+        run: |
+          Rscript tools/build-library.R
+          Rscript tools/pack-library.R
+
+      - name: Smoke test the site
+        run: |
+          bash tools/make-dist.sh --with-image
+          python3 serve.py --root dist 8080 &
+          for _ in $(seq 60); do
+            curl -sSf -o /dev/null http://127.0.0.1:8080/index.html && break
+            sleep 1
+          done
+          node tools/smoke-test.mjs http://127.0.0.1:8080
+
+  publish:
+    needs: [build, verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      TAG: ${{ needs.build.outputs.tag }}
+      SHA256: ${{ needs.build.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: bundle
+
+      - name: Check the bundle is the one that was verified
+        run: echo "$SHA256  bundle/$TAG/$TAG.tar.gz" | sha256sum --check --strict
+
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          files: bundle/${{ needs.build.outputs.tag }}/${{ needs.build.outputs.tag }}.tar.gz
+          body: |
+            Wasm packages for webR ${{ inputs.webr_tag }}, verified by the run that built them.
+            sha256: `${{ needs.build.outputs.sha256 }}`
+
+      # Needs "Allow GitHub Actions to create and approve pull requests" (DEPLOY.md).
+      - uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          branch: wasm-repo/${{ needs.build.outputs.tag }}
+          title: 'Rebuild the wasm package bundle (${{ needs.build.outputs.tag }})'
+          commit-message: 'Rebuild the wasm package bundle'
+          body: |
+            Automated by `wasm-repo.yml`. The bundle was verified (frozen build, pack,
+            smoke test) before this pull request was opened; `deploy.yml` does not run on
+            pull requests opened by a workflow.
+
+            Review `lib/MANIFEST.tsv` before merging. The seven `local:vendor/wasm-repo`
+            rows are expected to change sha256 on every rebuild; any other movement
+            came from `--resolve` re-querying the remote repositories.
+          add-paths: |
+            lib/MANIFEST.tsv
+            lib/WASM_REPO

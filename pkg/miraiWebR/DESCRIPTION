@@ -1,0 +1,29 @@
+Package: miraiWebR
+Title: Parallel Tasks on Background webR Workers with a 'mirai'-Compatible API
+Version: 0.1.3
+Authors@R: c(person("Lukas", "Widmer", email = "lukas_andreas.widmer@novartis.com",
+                    role = c("aut", "cre")),
+             person("Novartis", "Pharma AG", role = "cph"))
+Author: Lukas Widmer [aut, cre],
+  Novartis Pharma AG [cph]
+Maintainer: Lukas Widmer <lukas_andreas.widmer@novartis.com>
+Description: The 'mirai' package evaluates R expressions asynchronously in
+    background R processes. WebAssembly R has no processes, sockets or threads, so
+    'mirai' itself cannot run in webR. This package offers a subset of its interface
+    -- daemons(), mirai(), mirai_map(), everywhere(), unresolved(), collect_mirai(),
+    stop_mirai() and the m[] / m$data idioms -- on background webR sessions that the
+    BAMDD with webR/brms/stanli application starts in Web Workers. Each worker is a
+    complete R with the application's package library, so tasks run genuinely in
+    parallel. A 'future' backend, plan(miraiWebR::webr_workers), makes the same
+    workers available to future.apply, furrr and other 'future' clients.
+    Features of 'mirai' without a webR counterpart stop with an error rather than
+    being ignored.
+License: Apache License (>= 2)
+URL: https://github.com/luwidmer/bamdd-webr
+BugReports: https://github.com/luwidmer/bamdd-webr/issues
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports: jsonlite, parallel, utils
+Suggests: future, webr
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.1

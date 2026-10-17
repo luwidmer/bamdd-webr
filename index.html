@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<title>BAMDD with webR/brms/stanli</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="vendor/codemirror/material-darker.css">
+<link rel="stylesheet" href="vendor/codemirror/eclipse.css">
+<link rel="stylesheet" href="vendor/codemirror/addon/dialog/dialog.css">
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="boot">
+  <div class="boot-box">
+    <h1>BAMDD with webR/brms/stanli</h1>
+    <p class="boot-sub">R + Stan running client-side via webR and stanli</p>
+    <progress id="boot-progress" max="100" value="0"></progress>
+    <p id="boot-status">Starting…</p>
+    <pre id="boot-error" hidden></pre>
+  </div>
+</div>
+
+<div id="app" hidden data-pane="editor">
+  <header id="toolbar">
+    <span class="brand">BAMDD with webR/brms/stanli</span>
+    <button id="btn-interrupt" class="phone-only" title="Interrupt the running computation" disabled>Stop</button>
+    <span class="spacer"></span>
+    <span id="status-busy" class="pill idle">idle</span>
+    <span id="status-workers" class="pill" hidden>
+      <span id="workers-label"></span>
+      <button id="btn-workers-stop" class="pill-glyph" title="Stop the webR workers' tasks or shut them down" aria-label="Stop workers" aria-haspopup="menu" aria-expanded="false">✕</button>
+      <span id="workers-menu" class="menu" role="menu" hidden>
+        <button role="menuitem" data-action="cancel">Cancel tasks</button>
+        <button role="menuitem" data-action="close">Shut down workers</button>
+      </span>
+    </span>
+    <span id="status-r" class="pill"></span>
+    <select id="theme-select" title="Colour theme">
+      <option value="auto">Auto</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+    <button id="btn-about" title="About this application">About</button>
+  </header>
+
+  <div id="col-left" class="col">
+    <section id="pane-editor" class="pane">
+      <div class="pane-head">
+        <div id="editor-tabs"></div>
+        <span class="pane-actions">
+          <button id="btn-run" title="Run selection or current line (Ctrl/Cmd+Enter)">Run</button>
+          <button id="btn-run-all" title="Run every line of the file, one at a time">Run all</button>
+          <span class="split-button" id="source-split">
+            <button id="btn-source" title="Save, then source() the file">Source</button>
+            <button id="btn-source-menu" class="split-toggle" title="Source options" aria-haspopup="menu" aria-expanded="false">▾</button>
+            <span id="source-menu" class="menu" role="menu" hidden>
+              <button role="menuitem" data-echo="false">Source</button>
+              <button role="menuitem" data-echo="true">Source with echo</button>
+            </span>
+          </span>
+          <button id="btn-save" title="Save the open file (Ctrl/Cmd+S)">Save</button>
+        </span>
+      </div>
+      <div id="editor-host" class="pane-body"></div>
+    </section>
+
+    <div id="split-left" class="splitter splitter-rows" role="separator" aria-orientation="horizontal"></div>
+
+    <section id="pane-console" class="pane">
+      <div class="pane-head">
+        <div class="tabs"><span class="tab active">Console</span></div>
+        <span class="pane-actions">
+          <span id="debug-actions" class="debug-actions" hidden>
+            <button data-debug="n" title="Run the next line (F10)">Next</button>
+            <button data-debug="s" title="Step into the next function call (Shift+F4)">Step into</button>
+            <button data-debug="f" title="Finish the current function or loop (Shift+F6)">Finish</button>
+            <button data-debug="c" title="Continue running (Shift+F5)">Continue</button>
+            <button data-debug="Q" title="Stop debugging (Shift+F8)">Quit</button>
+          </span>
+          <button id="btn-interrupt-console" title="Interrupt the running computation and drop queued lines (Ctrl+C)" disabled>Stop</button>
+          <button id="btn-restart" title="Restart R in a fresh session; files are kept (also q())">Restart</button>
+        </span>
+      </div>
+      <div id="tab-console" class="pane-body"></div>
+    </section>
+  </div>
+
+  <div id="split-cols" class="splitter splitter-cols" role="separator" aria-orientation="vertical"></div>
+
+  <div id="col-right" class="col">
+    <section id="pane-side" class="pane">
+      <div class="pane-head">
+        <div class="tabs" data-group="side">
+          <button class="tab" data-view="env">Environment</button>
+          <button class="tab" data-view="files">Files</button>
+          <button class="tab" data-view="pkgs">Packages</button>
+        </div>
+        <span class="pane-actions" data-group="side" data-view="env">
+          <button id="btn-refresh-env" class="glyph" title="Refresh">⟳</button>
+        </span>
+        <span class="pane-actions" data-group="side" data-view="files">
+          <button id="btn-new-file" class="glyph" title="New file">+</button>
+          <button id="btn-upload" class="glyph" title="Upload a file into the session">↑</button>
+          <button id="btn-download" class="glyph" title="Download the selected file">↓</button>
+          <button id="btn-refresh-files" class="glyph" title="Refresh">⟳</button>
+        </span>
+        <span class="pane-actions" data-group="side" data-view="pkgs">
+          <button id="btn-install-pkg" title="Install a package from repo.r-wasm.org">Install</button>
+          <button id="btn-refresh-pkgs" class="glyph" title="Refresh">⟳</button>
+        </span>
+      </div>
+      <div id="side-env" class="pane-body view" data-group="side" data-view="env"></div>
+      <div id="file-tree" class="pane-body view" data-group="side" data-view="files"></div>
+      <div id="side-pkgs" class="pane-body view" data-group="side" data-view="pkgs"></div>
+      <input type="file" id="upload-input" hidden multiple>
+    </section>
+
+    <div id="split-right" class="splitter splitter-rows" role="separator" aria-orientation="horizontal"></div>
+
+    <section id="pane-output" class="pane">
+      <div class="pane-head">
+        <div class="tabs" data-group="output">
+          <button class="tab" data-view="plots">Plots <span id="plot-count"></span></button>
+          <button class="tab" data-view="viewer">Viewer</button>
+          <button class="tab" data-view="help">Help</button>
+          <button class="tab" data-view="traceback">Traceback</button>
+        </div>
+        <span class="pane-actions" data-group="output" data-view="plots">
+          <button id="btn-plot-prev" class="glyph" title="Previous plot">‹</button>
+          <button id="btn-plot-next" class="glyph" title="Next plot">›</button>
+          <button id="btn-plot-popout" title="Open this plot in a new window">Pop out</button>
+          <button id="btn-plot-save" title="Download plot as PNG">Save PNG</button>
+          <button id="btn-plot-clear" title="Remove all plots">Clear</button>
+        </span>
+      </div>
+      <div id="view-plots" class="pane-body view" data-group="output" data-view="plots"><div id="plot-stage"></div></div>
+      <div id="view-viewer" class="pane-body view" data-group="output" data-view="viewer"></div>
+      <div id="view-help" class="pane-body view" data-group="output" data-view="help"></div>
+      <div id="view-traceback" class="pane-body view" data-group="output" data-view="traceback"></div>
+    </section>
+  </div>
+
+  <nav id="mobile-nav">
+    <button data-pane="editor">Editor</button>
+    <button data-pane="console">Console</button>
+    <button data-pane="side">Workspace</button>
+    <button data-pane="output">Output</button>
+  </nav>
+</div>
+
+<dialog id="about-dialog">
+  <h2>BAMDD with webR/brms/stanli <span id="about-version"></span></h2>
+  <p>R and Stan running entirely client-side via webR and stanli: no server, no install,
+     no C++ toolchain.</p>
+  <p><strong>Experimental software</strong>, provided as is. Not validated for regulated or
+     clinical use.</p>
+  <table id="about-versions"></table>
+  <p>Teaching material and case studies:<br>
+     <a href="https://opensource.nibr.com/bamdd/" target="_blank" rel="noopener noreferrer">Applied
+     Modelling in Drug Development (BAMDD)</a></p>
+  <p id="about-copyright">Copyright &copy; 2026 Novartis Pharma AG. Free software under the
+     GNU General Public License, version 3 or later. The bundled <code>stanliWebR</code>
+     and <code>miraiWebR</code> packages are Apache-2.0. The mounted R library redistributes
+     <span id="about-third-party">its</span> third-party packages
+     under their own licences.</p>
+  <p>Source code and build instructions:
+     <a href="https://github.com/luwidmer/bamdd-webr" target="_blank" rel="noopener noreferrer">github.com/luwidmer/bamdd-webr</a>.</p>
+  <details id="about-licence">
+    <summary>Full licence text</summary>
+    <pre id="about-licence-text">Loading…</pre>
+  </details>
+  <form method="dialog"><button>Close</button></form>
+</dialog>
+
+<script src="vendor/codemirror/codemirror.js"></script>
+<script src="vendor/codemirror/r.js"></script>
+<script src="vendor/codemirror/addon/dialog/dialog.js"></script>
+<script src="vendor/codemirror/addon/search/searchcursor.js"></script>
+<script src="vendor/codemirror/addon/search/search.js"></script>
+<script src="vendor/xterm/xterm.js"></script>
+<script src="vendor/xterm/xterm-addon-fit.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

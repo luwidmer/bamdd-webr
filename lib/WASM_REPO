@@ -1,0 +1,10 @@
+# Pin for the bundle of the seven wasm packages that have no usable upstream build,
+# published as a GitHub Release asset by .github/workflows/wasm-repo.yml and unpacked
+# into vendor/wasm-repo/ by tools/fetch-wasm-repo.sh (locally and in deploy.yml).
+# See "The wasm package bundle" in DEPLOY.md.
+#
+# Replaced by the pull request that wasm-repo.yml opens. Until then the fetch fails
+# loudly rather than building an image without rstan, RBesT, OncoBayes2, StanHeaders,
+# jinjar, stanliWebR and miraiWebR.
+TAG=PENDING
+SHA256=PENDING

@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+#
+# Deploy to Cloudflare Pages, with the filesystem image in R2.
+#
+#   export R2_PUBLIC_BASE=https://pub-<hash>.r2.dev
+#   export SITE_URL=https://bamdd.example.org   # optional; default https://<project>.pages.dev
+#   tools/deploy.sh [--smoke]
+#
+# With a custom SITE_URL both it and https://<project>.pages.dev stay live, so the
+# image's CORS is checked from both.
+#
+# Credentials come from either CLOUDFLARE_API_TOKEN (what CI sets, needing Workers R2
+# Storage: Edit and Pages: Edit) or an interactive `npx wrangler login`. With neither,
+# a terminal gets the login flow and a CI runner gets a hard failure.
+#
+# CLOUDFLARE_ACCOUNT_ID is only needed when the credentials reach more than one account;
+# `npx wrangler whoami` lists them. CI sets it explicitly.
+#
+# The manual equivalent of .github/workflows/deploy.yml, for use until its triggers are
+# enabled. See DEPLOY.md.
+#
+# wrangler is a devDependency so `npx wrangler` resolves from node_modules; unpinned and
+# uninstalled, npx re-fetches it on every call and stalls behind the proxy.
+set -euo pipefail
+
+PAGES_PROJECT="${PAGES_PROJECT:-webr-for-brms}"
+R2_BUCKET="${R2_BUCKET:-webr-for-brms}"
+
+smoke=0
+case "${1:-}" in
+  --smoke) smoke=1 ;;
+  "") ;;
+  *) echo "usage: $0 [--smoke]" >&2; exit 2 ;;
+esac
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+: "${R2_PUBLIC_BASE:?set it to the bucket public base URL, e.g. https://pub-<hash>.r2.dev}"
+R2_PUBLIC_BASE="${R2_PUBLIC_BASE%/}"
+
+[ -x node_modules/.bin/wrangler ] || die "wrangler not installed. Run: npm ci"
+[ -f lib/library.tar.gz ] || die "lib/library.tar.gz missing. Run tools/build-library.R then tools/pack-library.R"
+
+wrangler() { npx wrangler "$@"; }
+
+# Two credential modes. CI exports CLOUDFLARE_API_TOKEN; interactively `wrangler login`
+# is easier and keeps the secret out of shell history. wrangler prefers the environment
+# when both exist, which silently ignores a login, so say which one is in use.
+#
+# Checked up front because when the image is already in R2 the first call needing
+# credentials is the deploy itself, after a slow dist build. Note `whoami` exits 0 when
+# unauthenticated, so match its output; it reports that only when NO credential exists,
+# and tolerates a scoped token that cannot read /user.
+if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
+  echo "[deploy] auth   CLOUDFLARE_API_TOKEN from the environment"
+  [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || echo "[deploy] warn   CLOUDFLARE_ACCOUNT_ID unset; wrangler will fail if the token reaches several accounts"
+elif wrangler whoami 2>&1 | grep -q 'not authenticated'; then
+  if [ -t 0 ] && [ -t 1 ]; then
+    echo "[deploy] no Cloudflare credentials found; starting browser login"
+    wrangler login
+  else
+    die "no Cloudflare credentials and no terminal to log in from.
+  Export CLOUDFLARE_API_TOKEN (Workers R2 Storage: Edit + Pages: Edit), or run
+  'npx wrangler login' interactively first. See DEPLOY.md."
+  fi
+else
+  echo "[deploy] auth   wrangler login (OAuth)"
+fi
+
+# Keyed on the image's own bytes, so an unchanged image is never re-uploaded. CI keys on
+# the build inputs instead, because there it has not built the image yet.
+if command -v shasum >/dev/null 2>&1; then
+  hash="$(shasum -a 256 lib/library.tar.gz | cut -d' ' -f1)"
+else
+  hash="$(sha256sum lib/library.tar.gz | cut -d' ' -f1)"
+fi
+KEY="library-${hash:0:16}.tar.gz"
+IMAGE_URL="$R2_PUBLIC_BASE/$KEY"
+PAGES_URL="https://${PAGES_PROJECT}.pages.dev"
+# The origin visitors use: a custom domain needs its own CORS entry on the bucket.
+SITE_URL="${SITE_URL:-$PAGES_URL}"
+SITE_URL="${SITE_URL%/}"
+
+echo "[deploy] image  $IMAGE_URL"
+echo "[deploy] site   $SITE_URL"
+
+code="$(curl -sS -o /dev/null -w '%{http_code}' --head "$IMAGE_URL" || echo 000)"
+if [ "$code" = 200 ]; then
+  echo "[deploy] image already in R2, skipping the $(du -h lib/library.tar.gz | cut -f1) upload"
+else
+  echo "[deploy] uploading image (HTTP $code at that key)"
+  wrangler r2 object put "$R2_BUCKET/$KEY" --remote \
+    --file lib/library.tar.gz \
+    --content-type application/gzip \
+    --cache-control 'public, max-age=31536000, immutable'
+fi
+
+# The failure this catches is invisible to whoever deploys: without a matching CORS
+# policy the image 403s for everyone, and COEP has no other route to fall back on
+# while the bucket is on r2.dev, where CORP cannot be set.
+echo "[deploy] checking CORS"
+origins=("$SITE_URL")
+[ "$SITE_URL" = "$PAGES_URL" ] || origins+=("$PAGES_URL" "$SITE_URL")
+bash tools/check-cors.sh "$IMAGE_URL" "${origins[@]}" || die "the image is not readable from every site origin.
+  Set the bucket CORS policy to allow
+    $SITE_URL
+    $PAGES_URL
+    https://*.${PAGES_PROJECT}.pages.dev
+  or, on a custom image domain, the Transform Rule setting Access-Control-Allow-Origin: *.
+  Then re-run. See DEPLOY.md."
+
+bash tools/make-dist.sh
+
+cat > dist/js/config.js <<EOF
+// Generated by tools/deploy.sh; the committed copy keeps the local relative default.
+export const LIBRARY_IMAGE_URL = '$IMAGE_URL';
+EOF
+
+wrangler pages deploy dist --project-name="$PAGES_PROJECT" --branch main
+
+echo "[deploy] live at $SITE_URL"
+
+if [ "$smoke" = 1 ]; then
+  echo "[deploy] smoke testing"
+  node tools/smoke-test.mjs "$SITE_URL"
+fi

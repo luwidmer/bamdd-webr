@@ -1,0 +1,14 @@
+{
+  "name": "bamdd-webr-tooling",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Dev-only tooling. The app itself ships no npm dependencies; vendored UI libraries come from tools/fetch-ui-libs.sh.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node tools/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "wrangler": "4.147.0"
+  }
+}

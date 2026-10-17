@@ -1,0 +1,609 @@
+/* light-dark() resolves against the used color-scheme, so "follow the OS" needs no
+   JavaScript and cannot flash on load. The toolbar control overrides by setting
+   data-theme; js/theme.js reads these same values back out for xterm. */
+:root {
+  color-scheme: light dark;
+
+  --bg:        light-dark(#ffffff, #1e1e1e);
+  --bg-alt:    light-dark(#f3f3f3, #252526);
+  --bg-head:   light-dark(#e7e7e7, #333333);
+  --fg:        light-dark(#1f1f1f, #d4d4d4);
+  --fg-dim:    light-dark(#6a6a6a, #9a9a9a);
+  --border:    light-dark(#d0d0d0, #3c3c3c);
+  --accent:    light-dark(#0066cc, #4a9eff);
+  --on-accent: light-dark(#ffffff, #1e1e1e);
+  --ok:        light-dark(#0f7b6c, #4ec9b0);
+  --err:       light-dark(#b02a1a, #f48771);
+  --err-bg:    light-dark(#fdf1ef, #2d1a17);
+  --btn:       light-dark(#ffffff, #3a3d41);
+  --btn-hover: light-dark(#eaeaea, #4a4d51);
+  --pill-bg:   light-dark(#ffffff, #2d2d2d);
+  --row-hover: light-dark(#e8e8e8, #2a2d2e);
+  --row-active: light-dark(#cce3f5, #094771);
+
+  /* R draws plots on a white canvas and gt assumes a light page, so these stay light
+     in both themes -- theming them would only frame white output in dark chrome. */
+  --paper: #ffffff;
+  --paper-fg: #888888;
+  --paper-border: #dddddd;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Every button, select, search box and tab shares these. */
+  --ctl-h: 24px;
+  --ctl-font: 12px;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+
+/* #boot/#app set `display`, which outranks the UA's [hidden] rule, so hiding them
+   would otherwise leave the overlay on top swallowing every click. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+/* ---------- boot screen ---------- */
+
+#boot {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.boot-box { width: min(560px, 90vw); text-align: center; }
+.boot-box h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+.boot-sub { margin: 0 0 24px; color: var(--fg-dim); }
+#boot-progress { width: 100%; height: 4px; }
+#boot-status { color: var(--fg-dim); margin-top: 12px; min-height: 1.5em; }
+
+#boot-error {
+  margin-top: 20px;
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--err-bg);
+  border: 1px solid var(--err);
+  border-radius: 4px;
+  color: var(--err);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 45vh;
+  overflow: auto;
+}
+
+/* ---------- layout ---------- */
+
+/* Desktop: editor over console on the left, workspace over output on the right, the
+   arrangement webr.sh uses. The splitters write the size variables in px; until then
+   the fr defaults apply. --app-h follows the visual viewport on phones (js/layout.js)
+   so the on-screen keyboard does not cover the console. */
+#app {
+  display: grid;
+  grid-template-columns: minmax(0, var(--left-w, 1fr)) 5px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "toolbar toolbar    toolbar"
+    "left    split-cols right";
+  height: var(--app-h, 100dvh);
+}
+
+#toolbar    { grid-area: toolbar; }
+#col-left   { grid-area: left; grid-template-rows: minmax(0, var(--left-top-h, 3fr)) 5px minmax(0, 2fr); }
+#split-cols { grid-area: split-cols; }
+#col-right  { grid-area: right; grid-template-rows: minmax(0, var(--right-top-h, 1fr)) 5px minmax(0, 1fr); }
+#mobile-nav { grid-area: nav; display: none; }
+
+.col { display: grid; min-height: 0; min-width: 0; }
+
+.splitter { background: var(--bg-head); touch-action: none; }
+.splitter:hover, .splitter.dragging { background: var(--accent); }
+.splitter-cols { cursor: col-resize; }
+.splitter-rows { cursor: row-resize; }
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Phone: one pane at a time, picked from the bottom bar. The columns dissolve so all
+   four panes land in the same grid cell. Under 500 px tall (a phone on its side) four
+   panes are too cramped as well. Keep in sync with js/layout.js. */
+@media (max-width: 767.98px), (max-height: 499.98px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "toolbar" "main" "nav";
+  }
+  .col { display: contents; }
+  .splitter { display: none; }
+  .pane { grid-area: main; display: none; }
+  #app[data-pane="editor"] #pane-editor,
+  #app[data-pane="console"] #pane-console,
+  #app[data-pane="side"] #pane-side,
+  #app[data-pane="output"] #pane-output { display: flex; }
+
+  #mobile-nav {
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--bg-head);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #mobile-nav button {
+    flex: 1;
+    position: relative;
+    height: auto;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg-dim);
+    font-size: 13px;
+    padding: 10px 0;
+  }
+  #mobile-nav button.active { color: var(--accent); box-shadow: inset 0 2px 0 var(--accent); }
+  #mobile-nav button.badge::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    right: calc(50% - 34px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  #toolbar .brand { display: none; }
+}
+
+@media (min-width: 768px) and (min-height: 500px) {
+  .phone-only { display: none; }
+}
+
+/* Finger-sized targets wherever the primary pointer is a finger, whatever the width. */
+@media (pointer: coarse) {
+  :root { --ctl-h: 36px; }
+  .env-row, .pkg-row, .fs-node { min-height: 36px; }
+}
+
+/* ---------- toolbar ---------- */
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-head);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 600; margin-right: 10px; }
+.spacer { flex: 1; }
+
+button, select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--ctl-h);
+  min-width: var(--ctl-h);
+  padding: 0 8px;
+  background: var(--btn);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: inherit;
+  font-size: var(--ctl-font);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+button:hover:not(:disabled), select:hover { background: var(--btn-hover); }
+button:disabled { opacity: .4; cursor: default; }
+button.glyph { padding: 0; font-size: 15px; }
+
+/* Two buttons drawn as one, the right half opening a menu. */
+.split-button { position: relative; display: inline-flex; }
+.split-button > button:first-child { border-radius: 3px 0 0 3px; }
+.split-button > .split-toggle { border-left: none; border-radius: 0 3px 3px 0; min-width: 0; padding: 0 5px; }
+.menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / .2);
+}
+.menu[hidden] { display: none; }
+.menu > button { justify-content: flex-start; border: none; background: transparent; }
+.menu > button:hover, .menu > button:focus-visible { background: var(--btn-hover); outline: none; }
+
+.debug-actions { display: inline-flex; gap: 4px; }
+.debug-actions[hidden] { display: none; }
+.debug-actions button { border-color: var(--accent); color: var(--accent); }
+.CodeMirror .cm-debug-line { background: light-dark(#fff3c4, #4b3f12); }
+.env-bar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; background: var(--bg); }
+.env-bar select { flex: 1 1 60%; min-width: 0; justify-content: flex-start; }
+.env-bar .pane-search { flex: 1 1 40%; }
+
+.tb-title { padding: 6px 10px; font-weight: 600; border-bottom: 1px solid var(--border); white-space: pre-wrap; }
+.tb-row { display: flex; align-items: baseline; gap: 8px; padding: 3px 10px; font-family: var(--mono); font-size: 12px; }
+.tb-row.clickable { cursor: pointer; }
+.tb-row.clickable:hover { background: var(--row-hover); }
+.tb-row.selected { background: var(--row-active); }
+.tb-call { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-pos { color: var(--fg-dim); flex: none; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--pill-bg);
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+}
+.pill.busy { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.pill.ok   { color: var(--ok); border-color: var(--ok); }
+.pill.bad  { color: var(--err); border-color: var(--err); }
+#status-workers { position: relative; gap: 4px; padding-right: 2px; }
+.pill-glyph {
+  height: 16px;
+  min-width: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+}
+.pill-glyph:hover:not(:disabled) { background: rgb(128 128 128 / .3); }
+#workers-menu { font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+/* ---------- panes ---------- */
+
+.pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+  padding: 3px 8px 0;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-dim);
+}
+
+.pane-actions { display: flex; gap: 4px; margin-left: auto; padding-bottom: 3px; }
+
+.pane-body { flex: 1; min-height: 0; overflow: auto; }
+
+/* ---------- tabs ---------- */
+
+.tabs { display: flex; gap: 2px; flex: none; }
+
+.tab, .etab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--ctl-h) + 3px);
+  min-width: 0;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--fg-dim);
+  font-size: var(--ctl-font);
+  white-space: nowrap;
+}
+.tab { flex: none; }
+.tab:hover:not(:disabled), .etab:hover:not(:disabled) { background: transparent; color: var(--fg); }
+.tab.active, .etab.active { color: var(--fg); border-bottom-color: var(--accent); }
+span.tab { cursor: default; }
+
+/* Each tabbed pane shows one body, and only that tab's actions. */
+.view { display: none; }
+.view.active { display: block; }
+.pane-actions[data-view]:not(.active) { display: none; }
+.pane-head .tabs { overflow-x: auto; scrollbar-width: none; }
+
+/* ---------- file tree ---------- */
+
+#file-tree { padding: 4px 0; font-family: var(--mono); font-size: 12px; }
+
+.fs-node {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fs-node:hover { background: var(--row-hover); }
+.fs-node.active { background: var(--row-active); }
+.fs-node .icon { color: var(--fg-dim); width: 1em; flex: none; }
+.fs-node .size { margin-left: auto; color: var(--fg-dim); font-size: 10px; }
+.fs-dir > .fs-node { font-weight: 600; }
+.fs-children { margin-left: 12px; }
+.fs-empty { padding: 8px; color: var(--fg-dim); font-style: italic; }
+
+/* ---------- editor ---------- */
+
+#editor-tabs { display: flex; gap: 2px; overflow-x: auto; min-width: 0; scrollbar-width: none; }
+
+.etab {
+  flex: none;
+  white-space: nowrap;
+  padding: 0 8px;
+  font-family: var(--mono);
+}
+.etab .dirty { color: var(--accent); }
+.etab .close { opacity: .5; }
+.etab .close:hover { opacity: 1; }
+
+#editor-host { position: relative; }
+#editor-host .CodeMirror { height: 100%; font-family: var(--mono); font-size: 13px; }
+.custom-tab { position: absolute; inset: 0; display: flex; flex-direction: column; }
+
+/* ---------- R syntax highlighting ---------- */
+
+/* The vendored CodeMirror themes are generic, and neither was written with R in mind:
+   material-darker paints every identifier salmon and dims comments to the gutter
+   colour, while the token types the R mode invents -- arrow, dollar and semi -- are
+   styled by no stock theme at all. These rules retune the whole set for both schemes.
+   The `span` outranks eclipse's `.cm-s-eclipse span.cm-*`, and app.css loads after
+   both theme files, so equal-specificity rules win on order. */
+
+/* What is left in "variable" once js/editor.js has split the calls out is plain data:
+   object names, argument names, column names. Neutral, because it is most of the file. */
+.CodeMirror span.cm-variable { color: light-dark(#1f1f1f, #d4d4d4); }
+
+.CodeMirror span.cm-comment { color: light-dark(#3f7f5f, #6a9955); }
+.CodeMirror span.cm-string { color: light-dark(#a31515, #ce9178); }
+.CodeMirror span.cm-string-2 { color: light-dark(#b35000, #d7ba7d); }
+
+/* NULL, NA, TRUE, Inf are constants like any literal, so they share the number colour. */
+.CodeMirror span.cm-number,
+.CodeMirror span.cm-atom { color: light-dark(#098658, #b5cea8); }
+
+/* eclipse bolds keywords and sets its own line-height; normalised so the two schemes
+   have identical metrics and weight. */
+.CodeMirror span.cm-keyword {
+  color: light-dark(#af00db, #c586c0);
+  font-weight: normal;
+  line-height: inherit;
+}
+
+/* Calls, tagged by the mode wrapper in js/editor.js. The mode's own "builtin" list is
+   eight arbitrary names (list, return, eval...) that are calls like any other, so they
+   share the colour rather than standing out for no reason. */
+.CodeMirror span.cm-builtin,
+.CodeMirror span.cm-callee { color: light-dark(#795e26, #dcdcaa); }
+.CodeMirror span.cm-operator,
+.CodeMirror span.cm-semi { color: light-dark(#3c3c3c, #cfcfcf); }
+
+/* After cm-operator: the mode emits "operator variable-2" for %in% and friends,
+   "operator dollar" for $, and "operator arrow" for <-, so these must win on order. */
+.CodeMirror span.cm-variable-2,
+.CodeMirror span.cm-variable-3 { color: light-dark(#267f99, #4ec9b0); }
+.CodeMirror span.cm-dollar { color: light-dark(#3c3c3c, #cfcfcf); }
+
+/* Assignment is the one operator worth picking out of an R script. A named argument's
+   = is not: the mode has an "arg-is" token for it, but an upstream bug drops
+   ctx.argList on the token after "(", so it never fires and = stays an operator. */
+.CodeMirror span.cm-arrow { color: light-dark(#0451a5, #569cd6); }
+
+/* ---------- console ---------- */
+
+#tab-console.active { display: block; }
+/* On .xterm, not the host: FitAddon subtracts this padding but not the host's. */
+#tab-console .xterm { padding: 4px 2px 2px 6px; height: 100%; }
+
+/* ---------- plots ---------- */
+#view-plots { background: var(--paper); }
+#plot-stage { display: grid; place-items: center; height: 100%; padding: 8px; }
+#plot-stage canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  box-shadow: 0 0 0 1px var(--paper-border);
+}
+.plot-empty { color: var(--paper-fg); font-style: italic; }
+
+/* ---------- viewer ---------- */
+
+#view-viewer { background: var(--paper); padding: 0; }
+.viewer-frame { width: 100%; height: 100%; border: none; display: block; }
+.viewer-empty { color: var(--paper-fg); font-style: italic; padding: 12px; }
+
+/* ---------- environment and packages ---------- */
+
+.pane-msg { padding: 8px 10px; color: var(--fg-dim); font-style: italic; margin: 0; }
+.pane-msg.error { color: var(--err); font-style: normal; }
+
+.pane-search {
+  height: var(--ctl-h);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--ctl-font);
+  min-width: 0;
+}
+#side-pkgs > .pane-search { display: block; width: calc(100% - 12px); margin: 6px; }
+
+.env-row, .pkg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.env-row:hover, .pkg-row:hover { background: var(--row-hover); }
+.env-row.expandable { cursor: pointer; }
+.env-row.depth-1 { padding-left: 26px; }
+.env-toggle { width: 1em; flex: none; color: var(--fg-dim); }
+.env-name { font-family: var(--mono); font-weight: 600; flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
+.env-value { font-family: var(--mono); color: var(--fg-dim); overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.env-more { color: var(--fg-dim); font-style: italic; padding-left: 26px; }
+.env-view, .pkg-name { height: auto; min-width: 0; padding: 0 6px; border: none; background: transparent; }
+.env-view { color: var(--accent); font-size: 14px; flex: none; }
+
+.pkg-name { font-family: var(--mono); color: var(--accent); flex: none; }
+.pkg-name:hover:not(:disabled) { background: transparent; text-decoration: underline; }
+.pkg-title { color: var(--fg-dim); overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.pkg-version { font-family: var(--mono); color: var(--fg-dim); flex: none; }
+.pkg-lib { font-size: 10px; color: var(--fg-dim); border: 1px solid var(--border); border-radius: 8px; padding: 0 5px; flex: none; }
+
+/* ---------- data grid ---------- */
+
+.dg { background: var(--bg); }
+.dg-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-alt);
+  flex-wrap: wrap;
+}
+.dg-bar .pane-search { flex: 0 1 220px; }
+.dg-bar button.active { border-color: var(--accent); color: var(--accent); }
+.dg-status, .dg-cols { color: var(--fg-dim); font-size: 12px; }
+.dg-status { margin-left: auto; }
+.dg-status.error { color: var(--err); }
+.dg-scroll { flex: 1; min-height: 0; overflow: auto; }
+.dg-text { margin: 0; padding: 8px 12px; font-family: var(--mono); font-size: 12px; }
+
+.dg-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.dg-table thead { position: sticky; top: 0; z-index: 2; }
+.dg-table th, .dg-table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.dg-table th { background: var(--bg-head); font-weight: 600; }
+.dg-head th { cursor: pointer; height: 28px; }
+.dg-head th:first-child { cursor: default; }
+.dg-name { margin-right: 6px; }
+.dg-type { color: var(--fg-dim); font-weight: 400; font-size: 10px; }
+.dg-sort { color: var(--accent); margin-left: 4px; }
+.dg-filter th { padding: 2px 3px; }
+.dg-filter-input {
+  width: 100%;
+  font: inherit;
+  font-weight: 400;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.dg-table .dg-rn {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 64px;
+  background: var(--bg-alt);
+  color: var(--fg-dim);
+  text-align: right;
+}
+.dg-table th.dg-rn { z-index: 3; background: var(--bg-head); }
+.dg-table td.na { color: var(--fg-dim); font-style: italic; }
+.dg-pad td { padding: 0; border: none; }
+
+/* ---------- help ---------- */
+
+#view-help { display: none; flex-direction: column; background: var(--bg); }
+#view-help.active { display: flex; }
+.help-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+.help-bar .pane-search { flex: 1; }
+.help-status { color: var(--fg-dim); font-family: var(--mono); font-size: 11px; }
+.help-frame-host { flex: 1; min-height: 0; }
+
+/* ---------- about dialog ---------- */
+
+#about-dialog {
+  max-width: 34em;
+  max-height: 85vh;
+  overflow: auto;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+#about-dialog::backdrop { background: rgb(0 0 0 / .4); }
+#about-dialog h2 { margin: 0 0 8px; font-size: 16px; }
+#about-version { color: var(--fg-dim); font-weight: 400; font-family: var(--mono); }
+#about-dialog p { margin: 0 0 12px; }
+#about-dialog a { color: var(--accent); }
+#about-versions {
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+#about-versions td { padding: 1px 16px 1px 0; }
+#about-versions td:first-child { color: var(--fg-dim); }
+#about-copyright { font-size: 12px; color: var(--fg-dim); }
+#about-licence { margin: 0 0 12px; }
+#about-licence summary { cursor: pointer; font-size: 12px; color: var(--accent); }
+#about-licence-text {
+  max-height: 15em;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+#about-dialog form { text-align: right; }

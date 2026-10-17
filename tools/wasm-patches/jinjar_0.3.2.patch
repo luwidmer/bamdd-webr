@@ -1,0 +1,26 @@
+Backport of the upstream nlohmann/json fix for `auto* const` iterators under libc++:
+issue https://github.com/nlohmann/json/issues/3081, fixed by pull request
+https://github.com/nlohmann/json/pull/3082 ("Revert invalid fix"), released in
+nlohmann/json v3.10.4 (MIT). jinjar 0.3.2 bundles inja, which carries an older json.hpp.
+`patch` ignores this text before the first diff header.
+
+--- a/src/inja/nlohmann/json.hpp
++++ b/src/inja/nlohmann/json.hpp
+@@ -17098,7 +17098,7 @@
+         // erase thousands separator
+         if (thousands_sep != '\0')
+         {
+-            auto* const end = std::remove(number_buffer.begin(),
++            auto const end = std::remove(number_buffer.begin(),
+                                           number_buffer.begin() + len, thousands_sep);
+             std::fill(end, number_buffer.end(), '\0');
+             JSON_ASSERT((end - number_buffer.begin()) <= len);
+@@ -17108,7 +17108,7 @@
+         // convert decimal point to '.'
+         if (decimal_point != '\0' && decimal_point != '.')
+         {
+-            auto* const dec_pos = std::find(number_buffer.begin(), number_buffer.end(), decimal_point);
++            auto const dec_pos = std::find(number_buffer.begin(), number_buffer.end(), decimal_point);
+             if (dec_pos != number_buffer.end())
+             {
+                 *dec_pos = '.';

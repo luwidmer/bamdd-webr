@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+*.R text
+*.js text
+*.mjs text
+*.html text
+*.css text
+*.md text
+*.sh text
+*.tsv text
+
+*.data binary
+*.tgz binary
+*.tar.gz binary
+*.wasm binary

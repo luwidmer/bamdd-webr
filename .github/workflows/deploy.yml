@@ -1,0 +1,205 @@
+# Build the filesystem image, upload it to R2, and deploy the static site to Pages.
+#
+# Triggers are deliberately dispatch-only for now: a pull_request trigger would fire
+# before lib/WASM_REPO names a real release and fail. Add
+#   push: {branches: [main]}
+#   pull_request:
+# once .github/workflows/wasm-repo.yml has run once and its PR is merged (DEPLOY.md,
+# "Bringing it up", step 3).
+name: deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Everything that can change the contents of lib/library.tar.gz.
+  HASH_INPUTS: lib/MANIFEST.tsv lib/WASM_REPO tools/build-library.R tools/pack-library.R tools/fetch-webr.sh
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    # Holds only the R2 token; the Pages token lives in `production` (DEPLOY.md).
+    environment: r2-write
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Check the wasm repo pin
+        run: |
+          if grep -q '=PENDING' lib/WASM_REPO; then
+            echo "::error file=lib/WASM_REPO::Still a placeholder. Dispatch wasm-repo.yml and merge its pull request first."
+            exit 1
+          fi
+
+      # Content-addressed by INPUTS, not by the packed bytes: tar/gzip timestamps make
+      # the image differ by ~200 B between otherwise identical runs.
+      - name: Compute the image key
+        id: key
+        run: |
+          hash="$(cat ${{ env.HASH_INPUTS }} | sha256sum | cut -c1-16)"
+          echo "key=library-${hash}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Is it already in R2?
+        id: probe
+        run: |
+          url="${{ vars.R2_PUBLIC_BASE }}/${{ steps.key.outputs.key }}"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --head "$url" || echo 000)"
+          echo "Probing $url -> $code"
+          echo "present=$([ "$code" = 200 ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+
+      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        if: steps.probe.outputs.present == 'no'
+        with:
+          r-version: '4.6.0'
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+        if: steps.probe.outputs.present == 'no'
+        with:
+          packages: github::r-wasm/rwasm
+          dependencies: '"hard"'
+
+      # Also the hedge against r-universe expiring a pinned URL (~3 months).
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.probe.outputs.present == 'no'
+        with:
+          path: vendor/pkgcache
+          key: pkgcache-${{ hashFiles('lib/MANIFEST.tsv') }}
+
+      - name: Fetch webR
+        if: steps.probe.outputs.present == 'no'
+        run: bash tools/fetch-webr.sh
+
+      - name: Restore the wasm package bundle
+        if: steps.probe.outputs.present == 'no'
+        env:
+          WASM_REPO_BASE: ${{ github.server_url }}/${{ github.repository }}/releases/download
+        run: bash tools/fetch-wasm-repo.sh
+
+      - name: Build and pack the library
+        if: steps.probe.outputs.present == 'no'
+        run: |
+          Rscript tools/build-library.R
+          Rscript tools/pack-library.R
+
+      - name: Upload to R2
+        if: steps.probe.outputs.present == 'no'
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            r2 object put ${{ vars.R2_BUCKET }}/${{ steps.key.outputs.key }}
+            --remote --file lib/library.tar.gz --content-type application/gzip
+            --cache-control "public, max-age=31536000, immutable"
+
+  build:
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Fetch vendored assets
+        run: |
+          bash tools/fetch-webr.sh
+          bash tools/fetch-ui-libs.sh
+
+      # Served from the same origin here, so this proves the app rather than the R2 wiring.
+      - name: Assemble dist/ and smoke test it locally
+        run: |
+          curl -fSL --create-dirs -o lib/library.tar.gz \
+            "${{ vars.R2_PUBLIC_BASE }}/${{ needs.image.outputs.key }}"
+          bash tools/make-dist.sh --with-image
+          python3 serve.py --root dist 8080 &
+          for _ in $(seq 60); do
+            curl -sSf -o /dev/null http://127.0.0.1:8080/index.html && break
+            sleep 1
+          done
+          node tools/smoke-test.mjs http://127.0.0.1:8080
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          # dist/lib is the local-test copy and must never reach Pages.
+          path: |
+            dist
+            !dist/lib
+
+  deploy:
+    needs: [image, build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Fetch vendored assets
+        run: |
+          bash tools/fetch-webr.sh
+          bash tools/fetch-ui-libs.sh
+
+      - name: Assemble dist/ and point it at R2
+        run: |
+          bash tools/make-dist.sh
+          cat > dist/js/config.js <<EOF
+          // Generated by .github/workflows/deploy.yml.
+          export const LIBRARY_IMAGE_URL = '${{ vars.R2_PUBLIC_BASE }}/${{ needs.image.outputs.key }}';
+          EOF
+
+      - id: pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.PAGES_PROJECT }}
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Both origins stay live; SITE_URL is probed again after pages.dev, so an
+      # edge-cached header echoed for one origin cannot hide a failure for the other.
+      - name: Check CORS from every site origin
+        env:
+          IMAGE_URL: ${{ vars.R2_PUBLIC_BASE }}/${{ needs.image.outputs.key }}
+          PAGES_URL: https://${{ vars.PAGES_PROJECT }}.pages.dev
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -n "$SITE_URL" ]; then
+            bash tools/check-cors.sh "$IMAGE_URL" "$SITE_URL" "$PAGES_URL" "$SITE_URL"
+          else
+            bash tools/check-cors.sh "$IMAGE_URL" "$PAGES_URL"
+          fi
+
+      # The only check that exercises the off-origin image, i.e. R2's CORS/CORP headers.
+      - name: Smoke test the deployment
+        run: node tools/smoke-test.mjs "${{ steps.pages.outputs.deployment-url }}"
+
+      # A custom domain is a different origin, with its own CORS entry on the bucket.
+      - name: Smoke test the production URL
+        if: vars.SITE_URL != '' && github.ref == 'refs/heads/main'
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node tools/smoke-test.mjs "$SITE_URL"

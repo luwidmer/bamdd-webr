@@ -1,0 +1,12 @@
+# Cloudflare Pages response headers. The local servers (serve.py / serve.R) set the
+# first two themselves; this file is what reproduces them on a deployment.
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+
+# Unversioned paths, so no `immutable` -- a webR or UI-library bump must not be masked.
+/vendor/*
+  Cache-Control: public, max-age=86400
