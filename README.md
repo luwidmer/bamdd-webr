@@ -264,8 +264,8 @@ Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscri
 bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
 bash    tools/fetch-wasm-repo.sh     # the seven above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
-Rscript tools/build-library.R        # 141 wasm packages -> build/library (~284 MB)
-Rscript tools/pack-library.R         # -> lib/library.tar.gz (~137 MB)
+Rscript tools/build-library.R        # 142 wasm packages -> build/library (~286 MB)
+Rscript tools/pack-library.R         # -> lib/library.tar.gz (~138 MB)
 ```
 
 To build the seven yourself instead, skip `fetch-wasm-repo.sh` and follow the three
@@ -424,7 +424,7 @@ installed at runtime may have been built against newer dependencies than the one
 
 ## Updating dependencies
 
-`lib/MANIFEST.tsv` pins all 141 packages by version and sha256, and is the only build
+`lib/MANIFEST.tsv` pins all 142 packages by version and sha256, and is the only build
 artifact that is committed. `build-library.R` defaults to `--frozen`, which downloads
 exactly those files and fails loudly on any checksum mismatch or 404.
 

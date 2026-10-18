@@ -9,7 +9,7 @@ and the version pins in [tools/fetch-webr.sh](tools/fetch-webr.sh),
 
 * Product: BAMDD with webR/brms/stanli, app version 0.4.0
 * Target runtime: a browser; **nothing runs server-side**
-* Total R packages in the image: **141**, all WebAssembly builds for R 4.6 (two, `stanliWebR` and `miraiWebR`, first-party)
+* Total R packages in the image: **142**, all WebAssembly builds for R 4.6 (two, `stanliWebR` and `miraiWebR`, first-party)
 * Bytes served on a cold visit: ~193 MB (`vendor/webr` 56 MB + `lib/library.tar.gz` 137 MB)
 
 ---
@@ -106,12 +106,12 @@ Resolution order is significant — the first repository providing a package win
 | 2 | `seantalts.r-universe.dev` | 1 |
 | 3 | `insightsengineering.r-universe.dev` | 1 |
 | 4 | `openpharma.r-universe.dev` | 1 |
-| 5 | `repo.r-wasm.org` | 131 |
+| 5 | `repo.r-wasm.org` | 132 |
 
 Every entry is pinned by version **and sha256** in `lib/MANIFEST.tsv`; the default
 `--frozen` build verifies each checksum and fails loudly on any mismatch or 404.
 
-## 7. R packages in the mounted library (141)
+## 7. R packages in the mounted library (142)
 
 Dependency closure of `Depends` + `Imports` over the targets `stanli`, `stanliWebR`,
 `miraiWebR`, `rstan`, `brms`, `RBesT`, `OncoBayes2` plus the example-only packages in
@@ -126,21 +126,21 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | Package | Version | Source | Licence |
 | --- | --- | --- | --- |
 | `abind` | 1.4-8 | repo.r-wasm.org | MIT |
-| `arrayhelpers` | 1.1-0 | repo.r-wasm.org | GPL |
+| `arrayhelpers` | 1.1-2 | repo.r-wasm.org | GPL |
 | `assertthat` | 0.2.1 | repo.r-wasm.org | GPL-3 |
 | `backports` | 1.5.1 | repo.r-wasm.org | GPL-2 or GPL-3 |
 | `base64enc` | 0.1-6 | repo.r-wasm.org | GPL-2 or GPL-3 |
-| `bayesplot` | 1.15.0 | repo.r-wasm.org | GPL (>= 3) |
+| `bayesplot` | 1.16.0 | repo.r-wasm.org | GPL (>= 3) |
 | `bigD` | 0.3.1 | repo.r-wasm.org | MIT |
 | `bit` | 4.6.0 | repo.r-wasm.org | GPL-3 |
-| `bit64` | 4.8.2 | repo.r-wasm.org | GPL-3 |
-| `bitops` | 1.0-9 | repo.r-wasm.org | GPL (>= 2) |
+| `bit64` | 4.8.6 | repo.r-wasm.org | GPL-3 |
+| `bitops` | 1.1-0 | repo.r-wasm.org | GPL (>= 2) |
 | `bridgesampling` | 1.2-1 | repo.r-wasm.org | GPL (>= 2) |
 | `brms` | 2.23.0 | repo.r-wasm.org | GPL-2 |
-| `Brobdingnag` | 1.2-9 | repo.r-wasm.org | GPL |
-| `bslib` | 0.11.0 | repo.r-wasm.org | MIT |
+| `Brobdingnag` | 1.3-1 | repo.r-wasm.org | GPL |
+| `bslib` | 0.12.0 | repo.r-wasm.org | MIT |
 | `cachem` | 1.1.0 | repo.r-wasm.org | MIT |
-| `callr` | 3.7.6 | repo.r-wasm.org | MIT |
+| `callr` | 3.8.0 | repo.r-wasm.org | MIT |
 | `checkmate` | 2.3.4 | repo.r-wasm.org | BSD-3-Clause |
 | `cli` | 3.6.6 | repo.r-wasm.org | MIT |
 | `clipr` | 0.8.1 | repo.r-wasm.org | GPL-3 |
@@ -150,29 +150,29 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `crayon` | 1.5.3 | repo.r-wasm.org | MIT + file LICENSE |
 | `desc` | 1.4.3 | repo.r-wasm.org | MIT |
 | `digest` | 0.6.39 | repo.r-wasm.org | GPL (>= 2) |
-| `distributional` | 0.7.0 | repo.r-wasm.org | GPL-3 |
+| `distributional` | 0.9.0 | repo.r-wasm.org | GPL-3 |
 | `dplyr` | 1.2.1 | repo.r-wasm.org | MIT |
-| `emmeans` | 2.0.3 | repo.r-wasm.org | GPL-3 |
-| `estimability` | 1.5.1 | repo.r-wasm.org | GPL (>= 3) |
+| `emmeans` | 2.0.4 | repo.r-wasm.org | GPL-3 |
+| `estimability` | 2.0.0 | repo.r-wasm.org | GPL (>= 3) |
 | `evaluate` | 1.0.5 | repo.r-wasm.org | MIT |
 | `farver` | 2.1.2 | repo.r-wasm.org | MIT |
 | `fastmap` | 1.2.0 | repo.r-wasm.org | MIT |
 | `fontawesome` | 0.5.3 | repo.r-wasm.org | MIT |
 | `forcats` | 1.0.1 | repo.r-wasm.org | MIT + file LICENSE |
-| `Formula` | 1.2-5 | repo.r-wasm.org | GPL-2 or GPL-3 |
+| `Formula` | 1.2-6 | repo.r-wasm.org | GPL-2 or GPL-3 |
 | `fs` | 2.1.0 | repo.r-wasm.org | MIT |
-| `future` | 1.70.0 | repo.r-wasm.org | LGPL (>= 2.1) |
+| `future` | 1.76.0 | repo.r-wasm.org | LGPL (>= 2.1) |
 | `future.apply` | 1.20.2 | repo.r-wasm.org | GPL (>= 2) |
 | `generics` | 0.1.4 | repo.r-wasm.org | MIT |
 | `ggdist` | 3.3.3 | repo.r-wasm.org | GPL (>= 3) |
-| `ggfortify` | 0.4.19 | repo.r-wasm.org | MIT + file LICENSE |
+| `ggfortify` | 0.4.24 | repo.r-wasm.org | MIT + file LICENSE |
 | `ggplot2` | 4.0.3 | repo.r-wasm.org | MIT |
 | `ggrepel` | 0.9.8 | repo.r-wasm.org | GPL-3 |
 | `ggridges` | 0.5.7 | repo.r-wasm.org | GPL-2 |
-| `ggthemes` | 5.2.0 | repo.r-wasm.org | GPL-2 |
-| `globals` | 0.19.1 | repo.r-wasm.org | LGPL (>= 2.1) |
+| `ggthemes` | 7.0.0 | repo.r-wasm.org | GPL-2 |
+| `globals` | 0.20.0 | repo.r-wasm.org | LGPL (>= 2.1) |
 | `glue` | 1.8.1 | repo.r-wasm.org | MIT |
-| `gridExtra` | 2.3 | repo.r-wasm.org | GPL (>= 2) |
+| `gridExtra` | 2.3.1 | repo.r-wasm.org | GPL (>= 2) |
 | `gt` | 0.11.1 | repo.r-wasm.org | MIT |
 | `gtable` | 0.3.6 | repo.r-wasm.org | MIT |
 | `here` | 1.0.2 | repo.r-wasm.org | MIT |
@@ -185,86 +185,87 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `jinjar` | 0.3.2 | vendor/wasm-repo | MIT |
 | `jquerylib` | 0.1.4 | repo.r-wasm.org | MIT |
 | `jsonlite` | 2.0.0 | repo.r-wasm.org | MIT |
-| `knitr` | 1.51 | repo.r-wasm.org | GPL |
+| `knitr` | 1.52 | repo.r-wasm.org | GPL |
 | `labeling` | 0.4.3 | repo.r-wasm.org | MIT or Unlimited |
-| `lattice` | 0.22-9 | repo.r-wasm.org | GPL (>= 2) |
+| `lattice` | 0.23-1 | repo.r-wasm.org | GPL (>= 2) |
 | `lifecycle` | 1.0.5 | repo.r-wasm.org | MIT |
-| `listenv` | 0.10.1 | repo.r-wasm.org | LGPL (>= 2.1) |
-| `litedown` | 0.9 | repo.r-wasm.org | MIT |
-| `loo` | 2.9.0 | repo.r-wasm.org | GPL (>= 3) |
+| `listenv` | 1.1.0 | repo.r-wasm.org | LGPL (>= 2.1) |
+| `litedown` | 0.11 | repo.r-wasm.org | MIT |
+| `loo` | 2.10.1 | repo.r-wasm.org | GPL (>= 3) |
 | `magrittr` | 2.0.5 | repo.r-wasm.org | MIT |
 | `markdown` | 2.0 | repo.r-wasm.org | MIT |
-| `MASS` | 7.3-65 | repo.r-wasm.org | GPL-2 or GPL-3 |
-| `Matrix` | 1.7-5 | repo.r-wasm.org | GPL (>= 2) + file LICENCE |
+| `MASS` | 7.3-66 | repo.r-wasm.org | GPL-2 or GPL-3 |
+| `Matrix` | 1.7-6 | repo.r-wasm.org | GPL (>= 2) + file LICENCE |
 | `matrixStats` | 1.5.0 | repo.r-wasm.org | Artistic-2.0 |
 | `memoise` | 2.0.1 | repo.r-wasm.org | MIT |
 | `mgcv` | 1.9-4 | repo.r-wasm.org | GPL (>= 2) |
 | `mime` | 0.13 | repo.r-wasm.org | GPL |
 | `miraiWebR` | 0.1.3 | vendor/wasm-repo | Apache-2.0 |
-| `mmrm` | 0.3.19 | openpharma* | Apache-2.0 |
+| `mmrm` | 0.3.19.9000 | openpharma* | Apache-2.0 |
 | `mvtnorm` | 1.2-4 | repo.r-wasm.org | GPL-2 |
 | `nleqslv` | 3.3.7 | repo.r-wasm.org | GPL (>= 2) |
-| `nlme` | 3.1-169 | repo.r-wasm.org | GPL (>= 2) |
+| `nlme` | 3.1-171 | repo.r-wasm.org | GPL (>= 2) |
 | `numDeriv` | 2016.8-1.1 | repo.r-wasm.org | GPL-2 |
 | `OncoBayes2` | 0.10-0 | vendor/wasm-repo | GPL (>= 3) |
-| `parallelly` | 1.47.0 | repo.r-wasm.org | LGPL (>= 2.1) |
+| `otel` | 0.2.0 | repo.r-wasm.org | MIT |
+| `parallelly` | 1.48.0 | repo.r-wasm.org | LGPL (>= 2.1) |
 | `patchwork` | 1.3.2 | repo.r-wasm.org | MIT |
 | `pillar` | 1.11.1 | repo.r-wasm.org | MIT |
 | `pkgbuild` | 1.4.8 | repo.r-wasm.org | MIT |
 | `pkgconfig` | 2.0.3 | repo.r-wasm.org | MIT |
-| `pkgload` | 1.5.2 | repo.r-wasm.org | MIT |
+| `pkgload` | 1.5.3 | repo.r-wasm.org | MIT |
 | `plyr` | 1.8.9 | repo.r-wasm.org | MIT |
 | `posterior` | 1.7.0 | repo.r-wasm.org | BSD-3-Clause |
 | `processx` | 3.9.0 | repo.r-wasm.org | MIT |
 | `ps` | 1.9.3 | repo.r-wasm.org | MIT |
 | `purrr` | 1.2.2 | repo.r-wasm.org | MIT |
 | `quadprog` | 1.5-8 | repo.r-wasm.org | GPL (>= 2) |
-| `QuickJSR` | 1.10.0 | repo.r-wasm.org | MIT |
+| `QuickJSR` | 1.11.0 | repo.r-wasm.org | MIT |
 | `R6` | 2.6.1 | repo.r-wasm.org | MIT |
 | `rappdirs` | 0.3.4 | repo.r-wasm.org | MIT |
 | `RBesT` | 1.12-0 | vendor/wasm-repo | GPL (>= 3) |
 | `rbibutils` | 2.4.1 | repo.r-wasm.org | GPL-2 |
-| `rbmi` | 1.6.1 | insightsengineering* | Apache-2.0 (>= 2) |
+| `rbmi` | 1.7.0 | insightsengineering* | Apache-2.0 (>= 2) |
 | `RColorBrewer` | 1.1-3 | repo.r-wasm.org | Apache-2.0 |
-| `Rcpp` | 1.1.1-1.1 | repo.r-wasm.org | GPL (>= 2) |
+| `Rcpp` | 1.1.2 | repo.r-wasm.org | GPL (>= 2) |
 | `RcppParallel` | 5.1.11-2 | repo.r-wasm.org | GPL (>= 3) |
 | `Rdpack` | 2.6.6 | repo.r-wasm.org | GPL (>= 2) |
 | `reactable` | 0.4.5 | repo.r-wasm.org | MIT |
 | `reactR` | 0.6.1 | repo.r-wasm.org | MIT |
 | `readr` | 2.2.0 | repo.r-wasm.org | MIT + file LICENSE |
 | `reshape2` | 1.4.5 | repo.r-wasm.org | MIT |
-| `rlang` | 1.2.0 | repo.r-wasm.org | MIT |
-| `rmarkdown` | 2.31 | repo.r-wasm.org | GPL-3 |
+| `rlang` | 1.3.0 | repo.r-wasm.org | MIT |
+| `rmarkdown` | 2.32 | repo.r-wasm.org | GPL-3 |
 | `rprojroot` | 2.1.1 | repo.r-wasm.org | MIT |
 | `rstan` | 2.32.7 | vendor/wasm-repo | GPL (>= 3) |
-| `rstantools` | 2.6.0 | repo.r-wasm.org | GPL (>= 3) |
+| `rstantools` | 2.7.1 | repo.r-wasm.org | GPL (>= 3) |
 | `S7` | 0.2.2 | repo.r-wasm.org | MIT |
 | `sass` | 0.4.10.9000 | repo.r-wasm.org | MIT |
 | `scales` | 1.4.0 | repo.r-wasm.org | MIT |
 | `simsurv` | 1.0.1 | repo.r-wasm.org | GPL (>= 3) |
-| `StanHeaders` | 2.32.10 | vendor/wasm-repo | BSD-3-Clause |
-| `stanli` | 0.21.0 | seantalts* | BSD-3-Clause |
+| `StanHeaders` | 2.39.1 | vendor/wasm-repo | BSD-3-Clause |
+| `stanli` | 0.22.0 | seantalts* | BSD-3-Clause |
 | `stanliWebR` | 0.7.0 | vendor/wasm-repo | Apache-2.0 |
 | `statmod` | 1.5.2 | repo.r-wasm.org | GPL-2 or GPL-3 |
-| `stringi` | 1.8.7 | repo.r-wasm.org | file LICENSE (BSD-style + ICU) |
+| `stringi` | 1.8.9 | repo.r-wasm.org | file LICENSE (BSD-style + ICU) |
 | `stringr` | 1.6.0 | repo.r-wasm.org | MIT |
-| `survival` | 3.8-6 | repo.r-wasm.org | LGPL (>= 2) |
+| `survival` | 3.8-12 | repo.r-wasm.org | LGPL (>= 2) |
 | `svUnit` | 1.0.8 | repo.r-wasm.org | GPL-2 |
 | `tensorA` | 0.36.2.1 | repo.r-wasm.org | GPL (>= 2) |
 | `tibble` | 3.3.1 | repo.r-wasm.org | MIT |
 | `tidybayes` | 3.0.7 | repo.r-wasm.org | GPL (>= 3) |
 | `tidyr` | 1.3.2 | repo.r-wasm.org | MIT |
 | `tidyselect` | 1.2.1 | repo.r-wasm.org | MIT |
-| `tinytex` | 0.59 | repo.r-wasm.org | MIT |
+| `tinytex` | 0.61 | repo.r-wasm.org | MIT |
 | `TMB` | 1.9.11 | repo.r-wasm.org | GPL-2 |
 | `tzdb` | 0.5.0 | repo.r-wasm.org | MIT + file LICENSE |
 | `utf8` | 1.2.6 | repo.r-wasm.org | Apache-2.0 |
 | `vctrs` | 0.7.3 | repo.r-wasm.org | MIT |
 | `viridisLite` | 0.4.3 | repo.r-wasm.org | MIT |
 | `vroom` | 1.7.1.9000 | repo.r-wasm.org | MIT + file LICENSE |
-| `withr` | 3.0.2 | repo.r-wasm.org | MIT |
-| `xfun` | 0.57 | repo.r-wasm.org | MIT |
-| `xml2` | 1.5.2 | repo.r-wasm.org | MIT |
+| `withr` | 3.0.3 | repo.r-wasm.org | MIT |
+| `xfun` | 0.61 | repo.r-wasm.org | MIT |
+| `xml2` | 1.6.0 | repo.r-wasm.org | MIT |
 | `yaml` | 2.3.12 | repo.r-wasm.org | BSD-3-Clause |
 
 ## 8. Build-time only (not shipped)
@@ -292,7 +293,6 @@ new application bundle.
 | Action | Licence | Used by |
 | --- | --- | --- |
 | `actions/checkout`, `actions/upload-artifact`, `actions/setup-node` | MIT | both workflows |
-| `actions/cache` | MIT | `deploy.yml` |
 | `actions/download-artifact` | MIT | `wasm-repo.yml` |
 | `r-lib/actions/setup-r`, `setup-r-dependencies` | MIT | both workflows |
 | `cloudflare/wrangler-action` | Apache-2.0 | R2 upload and `pages deploy` |
@@ -306,8 +306,8 @@ an unreviewed code path with access to the deployment credentials.
 
 | Artifact | Size | Committed | Produced by |
 | --- | --- | --- | --- |
-| `lib/MANIFEST.tsv` | 141 pinned packages + sha256 | yes | `tools/build-library.R --resolve` |
-| `lib/WASM_REPO` | release tag + sha256 of the cross-compiled bundle | yes | `.github/workflows/wasm-repo.yml` |
+| `lib/MANIFEST.tsv` | 142 pinned packages + sha256 | yes | `tools/build-library.R --resolve` |
+| `lib/WASM_REPO` | release tag + sha256 of the cross-compiled bundle and of the archive of every other pinned package | yes | `.github/workflows/wasm-repo.yml` |
 | `vendor/wasm-repo/` | 6.5 MB | no | `tools/vendor-wasm-repo.R` |
 | `build/library/` | 268 MB | no | `tools/build-library.R` |
 | `lib/library.tar.gz` | 137 MB, webR v2 image (tar + appended VFS index) | no | `tools/pack-library.R` |
@@ -336,11 +336,11 @@ Pages asset limit, so it is served from R2 and `js/config.js` points at it. Unde
 pass a CORS check. Locally the URL stays relative and nothing changes. See
 [DEPLOY.md](DEPLOY.md).
 
-## 11. Licence summary (the 141 mounted R packages)
+## 11. Licence summary (the 142 mounted R packages)
 
 | Family | Count |
 | --- | --- |
-| MIT | 67 |
+| MIT | 68 |
 | GPL (GPL-2 / GPL-3 / GPL >= 2 / >= 3) | 54 |
 | BSD (2- and 3-clause) | 6 |
 | LGPL (>= 2 / >= 2.1) | 6 |

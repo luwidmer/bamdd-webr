@@ -14,7 +14,7 @@ and R2 bucket names below are infrastructure identifiers and keep the old name.
    `readline()`, `menu()`, `browser()` or interrupt a running computation — the terminal
    stops working. [js/session.js](js/session.js) refuses to boot in that state rather
    than degrade silently. [`_headers`](_headers) supplies these on Pages.
-2. **A ~137 MB asset.** `lib/library.tar.gz` holds 141 wasm packages, and Cloudflare
+2. **A ~138 MB asset.** `lib/library.tar.gz` holds 142 wasm packages, and Cloudflare
    Pages rejects any single asset over 25 MiB. It is therefore served from R2 instead,
    and `tools/make-dist.sh` leaves it out of the upload. Plus roughly 56 MB of vendored
    webR, so a first visit downloads ~193 MB, browser-cached afterwards.
@@ -40,7 +40,7 @@ the deploy must be fast.
 
 ### The wasm package bundle
 
-Seven of the 141 packages have no usable WebAssembly build anywhere: rstan,
+Seven of the 142 packages have no usable WebAssembly build anywhere: rstan,
 StanHeaders, RBesT, OncoBayes2 and jinjar are cross-compiled in Docker, and stanliWebR
 and miraiWebR are first-party. Rebuilding them takes Docker and about an hour, so the
 deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
@@ -197,7 +197,7 @@ Nothing in the repository can do these, and `deploy.yml` fails loudly until they
    | `SITE_URL` | `https://bamdd.lukaswidmer.dev`; optional, smoke-tested after a deploy from `main`; CORS is checked from it and from `https://<PAGES_PROJECT>.pages.dev` |
 
 5. **Check the licensing.** The image redistributes webR, brms, stanli, a
-   cross-compiled `rstan`/`RBesT`/`OncoBayes2`, and 141 R packages in total under a range
+   cross-compiled `rstan`/`RBesT`/`OncoBayes2`, and 142 R packages in total under a range
    of licences (GPL, LGPL, Apache-2.0, BSD, MIT). Redistributing them from your own
    domain is a different act from a user downloading them from CRAN, and an automated
    deploy repeats it on every green build. [BOM.md](BOM.md) has the component list and a
