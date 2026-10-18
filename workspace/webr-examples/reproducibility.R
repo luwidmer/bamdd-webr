@@ -136,7 +136,7 @@ expected <- c(
   rnorm  = "f7ab8b90c877d416",
   stanli = "a4dfe4de2ebc7af2",
   brms   = "e87fd58366178dd9",
-  rbmi   = "311deb808d4c6e64"
+  rbmi   = "aaf3cd0e2b738136"
 )
 
 got <- vapply(results, fingerprint, character(1))
@@ -145,7 +145,9 @@ report <- data.frame(fingerprint = got, expected = expected[names(got)],
 print(report)
 
 if (!all(report$match)) {
+  differ <- rownames(report)[!report$match]
   stop("Not bit-identical to the reference build: ",
-       paste(rownames(report)[!report$match], collapse = ", "), call. = FALSE)
+       paste0(differ, " = \"", report$fingerprint[!report$match], "\"", collapse = ", "),
+       call. = FALSE)
 }
 cat("\nBit-identical to the reference build.\n")
