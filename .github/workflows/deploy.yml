@@ -79,11 +79,15 @@ jobs:
         if: steps.probe.outputs.present == 'no'
         run: bash tools/fetch-webr.sh
 
+      # Through gh, with the workflow token: a private repository's Release assets 404 anonymously.
       - name: Restore the wasm package bundle
         if: steps.probe.outputs.present == 'no'
         env:
-          WASM_REPO_BASE: ${{ github.server_url }}/${{ github.repository }}/releases/download
-        run: bash tools/fetch-wasm-repo.sh
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(sed -n 's/^TAG=//p' lib/WASM_REPO)"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$tag.tar.gz" --dir "bundle/$tag"
+          WASM_REPO_BASE="file://$GITHUB_WORKSPACE/bundle" bash tools/fetch-wasm-repo.sh
 
       - name: Build and pack the library
         if: steps.probe.outputs.present == 'no'

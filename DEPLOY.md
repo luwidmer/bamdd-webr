@@ -54,9 +54,11 @@ deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
   * `lib/WASM_REPO`: the Release tag and the sha256 of the archive;
   * `lib/MANIFEST.tsv`: its seven `local:vendor/wasm-repo` rows, one sha256 per package.
 * **Consumed by [tools/fetch-wasm-repo.sh](tools/fetch-wasm-repo.sh)**, in `deploy.yml`
-  and on any machine without Docker. It downloads the pinned archive, refuses it unless
-  its sha256 matches, and unpacks it. The frozen `build-library.R` then checks every
-  package against the manifest, so each of the seven is verified twice.
+  and on any machine without Docker. It refuses the pinned archive unless its sha256
+  matches, and unpacks it. `deploy.yml` downloads the archive with `gh release download`
+  first, so it also works while the repository is private; anywhere else the script
+  downloads it itself, which needs a public repository. The frozen `build-library.R`
+  then checks every package against the manifest, so each of the seven is verified twice.
 * **The two files move in lockstep.** `R CMD INSTALL` is not byte-reproducible, so any
   local rebuild of one of the seven changes its sha256, and a manifest holding that
   checksum no longer matches the published bundle: the frozen build then fails on it.
@@ -168,6 +170,11 @@ Nothing in the repository can do these, and `deploy.yml` fails loudly until they
 
    Fork pull requests never receive secrets for `pull_request` events regardless, so
    the environments bound which *jobs* hold credentials, not which forks.
+
+   **While the repository is private**, environment secrets and deployment branches
+   need GitHub Pro (or Team/Enterprise); on Free they exist only in public repositories.
+   Required reviewers need a public repository even on Pro, so the optional approval
+   gate on `production` waits until the repository is public.
 
    Repository **variables** (Variables tab, plain) are deliberately not secrets,
    because they are baked into `dist/js/config.js` and served to every visitor —
