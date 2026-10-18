@@ -85,10 +85,11 @@ say("Packing", length(pkgs), "packages")
 
 # Tar entries must be package directories at the archive root, so that mounting the
 # image at /library yields /library/<pkg>. Hence -C build/library with explicit names
-# rather than ".", which would prefix every entry with "./".
+# rather than ".", which would prefix every entry with "./". pax because GNU tar's
+# default format makes rwasm index "<pkg>/..." without the leading "/" WORKERFS strips.
 res <- system2(
   "tar",
-  c("-czf", shQuote(image), "-C", shQuote(lib_dir), pkgs),
+  c("--format=pax", "-czf", shQuote(image), "-C", shQuote(lib_dir), pkgs),
   stdout = TRUE, stderr = TRUE
 )
 if (!is.null(attr(res, "status")) && attr(res, "status") != 0) {
@@ -101,26 +102,31 @@ say("Appending webR filesystem index (this rereads and recompresses; be patient)
 
 rwasm::add_tar_index(image)
 
-# add_tar_index appends a JSON block plus a 16-byte trailer starting with the magic
-# "webR", then gzips the whole thing -- so the trailer lives INSIDE the gzip stream.
-# Stream-decompress and keep only the tail rather than holding ~230 MB in memory.
-con <- gzfile(image, open = "rb")
-on.exit(close(con), add = TRUE)
-tail_bytes <- raw(0)
-repeat {
-  chunk <- readBin(con, "raw", n = 1048576L)
-  if (!length(chunk)) break
-  tail_bytes <- utils::tail(c(tail_bytes, chunk), 16L)
+# Read the index back the way js/library.js does: a 16-byte trailer ("webR", reserved,
+# block, length) at the end of the gzip stream points at the JSON.
+data <- memDecompress(readBin(image, "raw", file.size(image)), "gzip")
+trailer <- utils::tail(data, 16L)
+if (length(trailer) < 16L || !identical(rawToChar(trailer[1:4]), "webR")) {
+  die("Filesystem index trailer missing. add_tar_index() did not apply.")
 }
-close(con)
-on.exit()
+int32 <- function(x) sum(as.integer(x) * 256^(3:0))
+at <- 512 * int32(trailer[9:12])
+indexed <- jsonlite::fromJSON(rawToChar(data[at + seq_len(int32(trailer[13:16]))]))$files$filename
+rm(data)
 
-if (length(tail_bytes) < 16L) die("Image is implausibly small after indexing.")
-magic <- rawToChar(tail_bytes[1:4])
-if (!identical(magic, "webR")) {
-  die("Filesystem index trailer missing (found '", magic, "'). add_tar_index() did not apply.")
+expected <- unlist(lapply(pkgs, function(p) {
+  paste0("/", p, "/", list.files(file.path(lib_dir, p), recursive = TRUE, all.files = TRUE))
+}))
+missing <- setdiff(expected, indexed)
+if (length(missing)) {
+  die(
+    "The image index lacks ", length(missing), " of ", length(expected),
+    " files, so webR would not see them. First few:\n  ",
+    paste(utils::head(missing, 5), collapse = "\n  "),
+    "\nIndexed as, e.g.: ", paste(utils::head(indexed, 3), collapse = ", ")
+  )
 }
-say("Filesystem index verified (webR trailer present)")
+say("Filesystem index verified:", length(expected), "files")
 
 say(sprintf("Image: %s (%.0f MB)", image, file.size(image) / 1e6))
 say("Mount it from R with: webr::mount('/library', '<origin>/lib/library.tar.gz')")
