@@ -90,10 +90,17 @@ jobs:
           Rscript tools/build-library.R
           Rscript tools/pack-library.R
 
+      # Without wranglerVersion the action installs its own default, a wrangler 3 lacking --remote.
+      - name: Wrangler version from package.json
+        if: steps.probe.outputs.present == 'no'
+        id: wrangler
+        run: echo "version=$(jq -r .devDependencies.wrangler package.json)" >> "$GITHUB_OUTPUT"
+
       - name: Upload to R2
         if: steps.probe.outputs.present == 'no'
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
+          wranglerVersion: ${{ steps.wrangler.outputs.version }}
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
@@ -164,9 +171,14 @@ jobs:
           export const LIBRARY_IMAGE_URL = '${{ vars.R2_PUBLIC_BASE }}/${{ needs.image.outputs.key }}';
           EOF
 
+      - name: Wrangler version from package.json
+        id: wrangler
+        run: echo "version=$(jq -r .devDependencies.wrangler package.json)" >> "$GITHUB_OUTPUT"
+
       - id: pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
+          wranglerVersion: ${{ steps.wrangler.outputs.version }}
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=${{ vars.PAGES_PROJECT }}
