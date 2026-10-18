@@ -154,6 +154,14 @@ jobs:
             lib/WASM_REPO
           if-no-files-found: error
 
+      # The exact files --resolve hashed: CDN edges can serve a package rebuilt in place
+      # under the same URL, so verify must not download its own copy.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pkgcache
+          path: vendor/pkgcache/
+          if-no-files-found: error
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -175,6 +183,12 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: bundle
+
+      # build-library.R reuses a cached file only if its sha256 matches the manifest.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: pkgcache
+          path: vendor/pkgcache
 
       - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
         with:
