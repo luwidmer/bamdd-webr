@@ -1,13 +1,4 @@
-# Pin for the bundle of the seven wasm packages that have no usable upstream build,
-# published as a GitHub Release asset by .github/workflows/wasm-repo.yml and unpacked
-# into vendor/wasm-repo/ by tools/fetch-wasm-repo.sh (locally and in deploy.yml).
-# PACKAGES_SHA256 pins the same Release's second asset: every other package in
-# lib/MANIFEST.tsv, as resolved, unpacked into vendor/pkgcache/.
-# See "The wasm package bundle" in DEPLOY.md.
-#
-# Replaced by the pull request that wasm-repo.yml opens. Until then the fetch fails
-# loudly rather than building an image without rstan, RBesT, OncoBayes2, StanHeaders,
-# jinjar, stanliWebR and miraiWebR.
-TAG=PENDING
-SHA256=PENDING
-PACKAGES_SHA256=PENDING
+# Written by .github/workflows/wasm-repo.yml; see "The wasm package bundle" in DEPLOY.md.
+TAG=wasm-repo-20261018-a87b2c9
+SHA256=3db14de8ab338aea999a342c5daf38ffcf3749a917fa85f11f0900ca702f228a
+PACKAGES_SHA256=0a26c8f7267679c51cd2bf57db7da66c0abf00e31c7876d5103edef77443d606
