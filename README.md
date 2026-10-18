@@ -263,7 +263,7 @@ git clone https://github.com/luwidmer/bamdd-webr.git && cd bamdd-webr
 Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscripten
 bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
-bash    tools/fetch-wasm-repo.sh     # the seven packages above -> vendor/wasm-repo
+bash    tools/fetch-wasm-repo.sh     # the seven above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
 Rscript tools/build-library.R        # 141 wasm packages -> build/library (~284 MB)
 Rscript tools/pack-library.R         # -> lib/library.tar.gz (~137 MB)
 ```
@@ -456,13 +456,14 @@ bundled version so you can check.
 ### The manifest detects drift, it does not guarantee reproducibility
 
 r-universe does not archive old builds — its API reports an `_expires` date roughly three
-months out. A pinned URL will eventually 404 and `--frozen` will fail loudly. That is
-correct behaviour, but it means the real reproducible artifacts are the downloaded
-tarballs in `vendor/pkgcache/` and the built `lib/library.tar.gz`; do not delete them
-casually. Only the packages served from r-universe are exposed to this;
-`repo.r-wasm.org` (a CRAN mirror) is far more stable. The seven in `vendor/wasm-repo/`
-are not committed, so they have to be rebuilt before a `--frozen` run
-can succeed; `build-library.R` names the missing file and the script to run.
+months out — and repo.r-wasm.org rebuilds packages in place under the same URL. Either
+breaks a pinned sha256, and `--frozen` then fails loudly. That is correct behaviour, but
+it means the real reproducible artifacts are the downloaded tarballs, which
+`wasm-repo.yml` publishes as the `-packages.tar` asset of the pinned Release
+(`fetch-wasm-repo.sh` unpacks them into `vendor/pkgcache/`), and the built
+`lib/library.tar.gz`. The seven in `vendor/wasm-repo/` are not committed, so they have
+to be fetched or rebuilt before a `--frozen` run can succeed; `build-library.R` names
+the missing file and the script to run.
 
 ## Layout
 ```

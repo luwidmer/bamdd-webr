@@ -68,25 +68,20 @@ jobs:
           packages: github::r-wasm/rwasm
           dependencies: '"hard"'
 
-      # Also the hedge against r-universe expiring a pinned URL (~3 months).
-      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        if: steps.probe.outputs.present == 'no'
-        with:
-          path: vendor/pkgcache
-          key: pkgcache-${{ hashFiles('lib/MANIFEST.tsv') }}
-
       - name: Fetch webR
         if: steps.probe.outputs.present == 'no'
         run: bash tools/fetch-webr.sh
 
       # Through gh, with the workflow token: a private repository's Release assets 404 anonymously.
+      # The second asset holds every other pinned package, so nothing comes from upstream.
       - name: Restore the wasm package bundle
         if: steps.probe.outputs.present == 'no'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="$(sed -n 's/^TAG=//p' lib/WASM_REPO)"
-          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$tag.tar.gz" --dir "bundle/$tag"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "bundle/$tag" \
+            --pattern "$tag.tar.gz" --pattern "$tag-packages.tar"
           WASM_REPO_BASE="file://$GITHUB_WORKSPACE/bundle" bash tools/fetch-wasm-repo.sh
 
       - name: Build and pack the library

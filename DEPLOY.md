@@ -53,12 +53,20 @@ deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
   open a pull request that changes two files together:
   * `lib/WASM_REPO`: the Release tag and the sha256 of the archive;
   * `lib/MANIFEST.tsv`: its seven `local:vendor/wasm-repo` rows, one sha256 per package.
+* **Every other pinned package rides along.** The same Release carries
+  `wasm-repo-<date>-<sha>-packages.tar`: the remote packages of `lib/MANIFEST.tsv`
+  exactly as `--resolve` downloaded and hashed them, pinned by `PACKAGES_SHA256` in
+  `lib/WASM_REPO`. repo.r-wasm.org rebuilds packages in place under the same URL, and
+  its CDN then serves either build for up to a week; r-universe expires old builds
+  after about three months. Either breaks a sha256 pin, so neither the verify job nor
+  a deploy downloads from them: both build from this archive.
 * **Consumed by [tools/fetch-wasm-repo.sh](tools/fetch-wasm-repo.sh)**, in `deploy.yml`
-  and on any machine without Docker. It refuses the pinned archive unless its sha256
-  matches, and unpacks it. `deploy.yml` downloads the archive with `gh release download`
+  and on any machine without Docker. It refuses either archive unless its sha256
+  matches, then unpacks the bundle into `vendor/wasm-repo/` and the packages into
+  `vendor/pkgcache/`. `deploy.yml` downloads both with `gh release download`
   first, so it also works while the repository is private; anywhere else the script
-  downloads it itself, which needs a public repository. The frozen `build-library.R`
-  then checks every package against the manifest, so each of the seven is verified twice.
+  downloads them itself, which needs a public repository. The frozen `build-library.R`
+  then checks every package against the manifest, so each one is verified twice.
 * **The two files move in lockstep.** `R CMD INSTALL` is not byte-reproducible, so any
   local rebuild of one of the seven changes its sha256, and a manifest holding that
   checksum no longer matches the published bundle: the frozen build then fails on it.
@@ -69,8 +77,9 @@ deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
   with an error rather than building an image without these packages.
 * **The image key covers it.** `lib/WASM_REPO` is one of the hashed build inputs below,
   so a new bundle produces, and uploads, a new image.
-* **Releases are the durable copy.** Unlike r-universe builds they do not expire. Do not
-  delete a Release that a commit still pins.
+* **Releases are the durable copy.** Unlike r-universe builds they do not expire, and
+  unlike repo.r-wasm.org they never change. Do not delete a Release that a commit
+  still pins.
 
 The pull request is opened with the workflow's own token, so it does not trigger
 `deploy.yml`; its checks are the verify job that ran before publishing.
@@ -301,11 +310,10 @@ against a `PENDING` `lib/WASM_REPO` and fail.
    `deploy.yml`. That pull request is itself the first live run.
 4. **Move off `r2.dev`** as in "Custom domains" above, before any announced use.
 
-Worth adding at step 3: a monthly `schedule:` trigger. r-universe does not archive old
-builds — its API reports an `_expires` date roughly three months out — so a pinned URL
-eventually 404s and a cold `--frozen` run fails. That is correct behaviour, but it
-should surface on a schedule rather than in the middle of a deploy. The R2 object is the
-durable artifact; Actions caches evict after seven days unused.
+Worth adding at step 3: a monthly `schedule:` trigger for `wasm-repo.yml`, so that
+upstream drift (new versions, in-place rebuilds, expired r-universe builds) surfaces as
+a pull request on a schedule. Deploys are unaffected by it: they build from the pinned
+Release, and the R2 object is the durable artifact.
 
 ## Releasing
 

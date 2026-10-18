@@ -1,6 +1,8 @@
 # Pin for the bundle of the seven wasm packages that have no usable upstream build,
 # published as a GitHub Release asset by .github/workflows/wasm-repo.yml and unpacked
 # into vendor/wasm-repo/ by tools/fetch-wasm-repo.sh (locally and in deploy.yml).
+# PACKAGES_SHA256 pins the same Release's second asset: every other package in
+# lib/MANIFEST.tsv, as resolved, unpacked into vendor/pkgcache/.
 # See "The wasm package bundle" in DEPLOY.md.
 #
 # Replaced by the pull request that wasm-repo.yml opens. Until then the fetch fails
@@ -8,3 +10,4 @@
 # jinjar, stanliWebR and miraiWebR.
 TAG=PENDING
 SHA256=PENDING
+PACKAGES_SHA256=PENDING
