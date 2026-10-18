@@ -69,11 +69,15 @@ jobs:
           r-version: '4.6.0'
           use-public-rspm: true
 
-      # usethis is what RBesT's tools/make-ds.R calls.
+      # usethis is what RBesT's tools/make-ds.R calls; R CMD INSTALL of pkg/* needs their Imports.
       - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
         with:
-          packages: any::rstantools, any::usethis, github::r-wasm/rwasm
+          packages: any::rstantools, any::usethis, github::r-wasm/rwasm, deps::./pkg/stanliWebR, deps::./pkg/miraiWebR
           dependencies: '"hard"'
+
+      # Before the Docker builds, so a failure here costs minutes rather than hours.
+      - name: Build stanliWebR and miraiWebR
+        run: Rscript tools/build-first-party.R
 
       # data/*.rda and R/sysdata.rda are generated, not tracked, and .onAttach() reads
       # pkg_create_date out of the latter -- without this RBesT installs then fails to load.
@@ -113,9 +117,6 @@ jobs:
           for d in vendor/BesT/build build/wasm-build; do
             if [ -e "$d" ]; then sudo chown -R "$(id -u):$(id -g)" "$d"; fi
           done
-
-      - name: Build stanliWebR and miraiWebR
-        run: Rscript tools/build-first-party.R
 
       - name: Assemble vendor/wasm-repo
         run: Rscript tools/vendor-wasm-repo.R
