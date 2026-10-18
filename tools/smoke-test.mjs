@@ -220,6 +220,14 @@ async function checkWorkers(page, evalR, { run, showPane, settle }) {
       (await evalR('as.character("miraiWebR:sequential" %in% search())')) === 'FALSE');
     return;
   }
+  // Private-repository CI runners have 2 cores, which leaves room for one worker only.
+  const { max } = await page.evaluate(() => JSON.parse(window.__app.session.pool.limits()));
+  if (max < 2) {
+    const refused = await evalR('library(miraiWebR); tryCatch({ daemons(2); "started" }, error = conditionMessage)');
+    check('daemons(2) beyond the device limit is refused', /allows at most \d+ webR worker/.test(refused), refused);
+    console.log(`skip  worker checks: this browser allows ${max} webR worker(s); they need 2`);
+    return;
+  }
   await run('library(miraiWebR); daemons(2)');
   check('daemons(2) shows the workers pill', await settle(
     () => document.getElementById('workers-label').textContent === 'workers 0/2 busy'
