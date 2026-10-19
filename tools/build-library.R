@@ -155,7 +155,34 @@ resolve_url <- function(url) {
 
 pkg_file <- function(package, version) sprintf("%s_%s.tgz", package, version)
 
-sha256 <- function(path) unname(tools::sha256sum(path))
+# tools::sha256sum() only exists from R 4.5.0; fall back to openssl, digest or the
+# platform's shasum/sha256sum so the build also runs on older R.
+sha256 <- local({
+  tools_sha256 <- tryCatch(get("sha256sum", envir = asNamespace("tools")),
+                           error = function(e) NULL)
+  if (is.function(tools_sha256)) {
+    function(path) unname(tools_sha256(path))
+  } else if (requireNamespace("openssl", quietly = TRUE)) {
+    # as.character() keeps openssl's "hash" class, which breaks identical().
+    function(path) {
+      con <- file(path, "rb")
+      on.exit(try(close(con), silent = TRUE), add = TRUE)
+      as.vector(unclass(as.character(openssl::sha256(con))))
+    }
+  } else if (requireNamespace("digest", quietly = TRUE)) {
+    function(path) as.vector(digest::digest(path, algo = "sha256", file = TRUE))
+  } else {
+    bin <- if (nzchar(Sys.which("sha256sum"))) "sha256sum" else "shasum"
+    args <- if (bin == "shasum") "-a 256" else character(0)
+    if (!nzchar(Sys.which(bin))) {
+      die(
+        "No sha256 implementation available.\n",
+        "Use R >= 4.5, or install the 'openssl' or 'digest' package."
+      )
+    }
+    function(path) sub(" .*$", "", system2(bin, c(args, shQuote(path)), stdout = TRUE)[1])
+  }
+})
 
 # A truncated download still leaves a file behind, so check it is a readable archive.
 is_valid_tarball <- function(path) {

@@ -15,10 +15,23 @@ CM_VERSION="${CM_VERSION:-5.65.16}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 fetch() {
-  local url="$1" dest="$2"
+  local url="$1" dest="$2" attempt
   mkdir -p "$(dirname "$dest")"
   echo "  $(basename "$dest")  <-  $url"
-  curl --fail --location --silent --show-error --output "$dest" "$url"
+  # unpkg intermittently answers 503 while it populates its cache.
+  for attempt in 1 2 3 4 5; do
+    if curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+            --connect-timeout 20 --max-time 120 \
+            --output "$dest" "$url"; then
+      break
+    fi
+    rm -f "$dest"
+    if [[ $attempt == 5 ]]; then
+      echo "ERROR: download failed after $attempt attempts: $url" >&2
+      exit 1
+    fi
+    sleep "$attempt"
+  done
   if [[ ! -s "$dest" ]]; then
     echo "ERROR: empty download: $url" >&2
     exit 1

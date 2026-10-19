@@ -23,6 +23,57 @@ r_contrib="4.6"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
+# Release assets of a private repository are not reachable anonymously: GitHub answers
+# 404 rather than 401. Fall back to the `gh` CLI (or a token) whenever the default
+# github.com base is in use and the plain download fails.
+gh_repo() {
+  case "$base" in
+    https://github.com/*/releases/download)
+      local rest="${base#https://github.com/}"
+      echo "${rest%/releases/download}"
+      ;;
+    *) echo "" ;;
+  esac
+}
+
+download() {
+  local url="$1" dest="$2" asset
+  if curl --fail --location --silent --show-error --output "$dest" "$url"; then
+    return 0
+  fi
+  rm -f "$dest"
+  local repo; repo="$(gh_repo)"
+  [ -n "$repo" ] || die "download failed: $url"
+  asset="$(basename "$url")"
+  local token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+  if [ -n "$token" ]; then
+    echo "[fetch-wasm-repo] retrying $asset with token auth"
+    local api
+    api="$(curl --fail --location --silent --show-error \
+      -H "Authorization: Bearer $token" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/$repo/releases/tags/$tag")" || die "download failed: $url"
+    local id
+    id="$(printf '%s' "$api" | python3 -c "import json,sys;r=json.load(sys.stdin);print(next((a['id'] for a in r['assets'] if a['name']==sys.argv[1]),''))" "$asset")"
+    [ -n "$id" ] || die "release $tag has no asset $asset"
+    curl --fail --location --silent --show-error \
+      -H "Authorization: Bearer $token" \
+      -H "Accept: application/octet-stream" \
+      --output "$dest" "https://api.github.com/repos/$repo/releases/assets/$id" ||
+      die "download failed: $url"
+    return 0
+  fi
+  if command -v gh >/dev/null 2>&1; then
+    echo "[fetch-wasm-repo] retrying $asset via gh (private repository)"
+    gh release download "$tag" --repo "$repo" --pattern "$asset" --output "$dest" --clobber ||
+      die "download failed: $url"
+    return 0
+  fi
+  die "download failed: $url
+  The repository may be private. Install the GitHub CLI and run 'gh auth login',
+  or export GH_TOKEN with a token that can read $repo."
+}
+
 sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | cut -d' ' -f1
@@ -51,7 +102,7 @@ mkdir -p "$root/vendor"
 archive="$root/vendor/$tag.tar.gz"
 url="$base/$tag/$tag.tar.gz"
 echo "[fetch-wasm-repo] $url"
-curl --fail --location --silent --show-error --output "$archive" "$url"
+download "$url" "$archive"
 
 got="$(sha256 "$archive")"
 if [ "$got" != "$want" ]; then
@@ -74,7 +125,7 @@ echo "[fetch-wasm-repo] $tag verified and unpacked:"
 packages="$root/vendor/$tag-packages.tar"
 url="$base/$tag/$tag-packages.tar"
 echo "[fetch-wasm-repo] $url"
-curl --fail --location --silent --show-error --output "$packages" "$url"
+download "$url" "$packages"
 got="$(sha256 "$packages")"
 if [ "$got" != "$packages_want" ]; then
   rm -f "$packages"
