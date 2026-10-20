@@ -63,7 +63,7 @@ See [LICENSE](LICENSE) and [pkg/stanliWebR/inst/LICENSE.md](pkg/stanliWebR/inst/
 | `miraiWebR` R package | [pkg/miraiWebR](pkg/miraiWebR) 0.1.3 — a subset of the `mirai` API, and a `future` backend, on background webR workers started by `js/workers.js`; no code from `mirai` | Apache-2.0 |
 | Patches | `tools/wasm-patches/jinjar_0.3.2.patch` (backport of nlohmann/json PR #3082, v3.10.4, MIT, for libc++), `tools/wasm-patches/webr-tbb-stubs.cpp` (TBB no-ops, from RBesT, GPL (>= 3)) | upstream terms |
 | Examples | `workspace/webr-examples/`: `brms-kidney.R`, `stanli-eight-schools.R`, `rbmi-bayes-stanli.R`, `reproducibility.R`, `parallel.R` | GPL-3.0-or-later |
-| bamdd workshop material | `workspace/bamdd_leiden2026_exercises.R`, `workspace/slides/` (seven slide scripts), `workspace/data/longitudinal.csv` and one Stan program in `workspace/stan/`, converted from `github.com/Novartis/bamdd`; text in [workspace/LICENSE-GPL-2](workspace/LICENSE-GPL-2) | GPL-2, as upstream |
+| bamdd workshop material | `workspace/bamdd_leiden2026_exercises.R`, `workspace/slides/` (eight slide scripts), `workspace/data/longitudinal.csv` and one Stan program in `workspace/stan/`, converted from `github.com/Novartis/bamdd`; text in [workspace/LICENSE-GPL-2](workspace/LICENSE-GPL-2) | GPL-2, as upstream |
 
 ## 4. Vendored third-party content
 

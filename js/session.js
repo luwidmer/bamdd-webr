@@ -25,8 +25,8 @@ const FIRST_PARTY_PACKAGES = ['stanliWebR', 'miraiWebR'];
 const WORKSPACE = [
   'bamdd_leiden2026_exercises.R',
   ...[
-    '01_overview', '02_hist_control', '03_priors', '04_dose_finding', '05_mmrm',
-    '06_longitudinal_data', '07_time_to_event',
+    '01_overview', '02_hist_control', '03_priors', '03b_prior_example_blrm',
+    '04_dose_finding', '05_mmrm', '06_longitudinal_data', '07_time_to_event',
   ].map((name) => `slides/${name}.R`),
   'data/longitudinal.csv',
   'stan/conflict_normal_student-t.stan',
