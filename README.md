@@ -25,7 +25,7 @@ files, packages, plots, viewer and help.
 | Stan models via the `stanli` package directly | `webr-examples/stanli-eight-schools.R` |
 | `brm()`, `summary()`, `plot()`, sampled by stanli | `webr-examples/brms-kidney.R`; needs `library(stanliWebR)`, see below |
 | Novartis bamdd Leiden 2026 workshop exercises | `bamdd_leiden2026_exercises.R`, opened at startup; runs end to end in ~2 min, chains in parallel on four webR workers |
-| R code of the bamdd Leiden 2026 slides (7 case studies) | `slides/`, with the `data/` and `stan/` files they read; converted by `tools/convert-bamdd-slides.R`; upstream sampler settings, chains on four webR workers: 01–04 and 07 take 2–30 s each, 05 and 06 ~4 min each |
+| R code of the bamdd Leiden 2026 slides (7 case studies, plus the 03b BLRM prior example) | `slides/`, with the `data/` and `stan/` files they read; converted by `tools/convert-bamdd-slides.R`; upstream sampler settings, chains on four webR workers: 01–04 and 07 take 2–30 s each, 05 and 06 ~4 min each |
 | Bit-wise exact reproducibility (base R, stanli, brms, rbmi) | `webr-examples/reproducibility.R`; stops unless every SHA-256 matches the recorded one |
 | `RBesT` (`gMAP`, `automixfit`, `ess`, decision/OC functions) | cross-compiled here; with `library(stanliWebR)`, sampled by stanli; see below |
 | `OncoBayes2` (`blrm_exnex`, `blrm_trial`) | cross-compiled here; with `library(stanliWebR)`, sampled by stanli; see below |
