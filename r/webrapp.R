@@ -1,4 +1,4 @@
-# Helpers behind the Environment, Packages, data viewer and Help panes.
+# Helpers behind the Environment, Packages, data viewer and Help panes, and completion.
 #
 # js/session.js sources this into an environment attached as "tools:webrapp", the same
 # trick RStudio uses, so rm(list = ls()) in the user's session cannot remove it. The
@@ -224,6 +224,33 @@ packages_list <- function() {
 }
 
 packages_attached <- function() json(I(.packages()))
+
+# ---------------------------------------------------------------- completion
+
+# Package names inside library() and require(), as in RStudio.
+utils::rc.settings(ipck = TRUE)
+
+# Tab completion for the console and the editor, from the engine behind R's own
+# readline completion. `cursor` counts characters from the start of `line`. Each
+# candidate replaces line[start, cursor). An error yields no candidates rather than
+# reaching options(error = ), which would offer a traceback for a key press.
+complete_line <- function(line, cursor, limit = 500L) {
+  res <- tryCatch(suppressWarnings({
+    utils:::.assignLinebuffer(line)
+    utils:::.assignEnd(cursor)
+    token <- utils:::.guessTokenFromLine()
+    utils:::.completeToken()
+    comps <- unique(utils:::.retrieveCompletions())
+    # This file's own helpers are on the search path too; only its masks are public.
+    own <- setdiff(ls(environment(complete_line), all.names = TRUE), c("View", "q", "quit"))
+    comps <- comps[!comps %in% own]
+    start <- utils:::.CompletionEnv[["start"]]
+    if (is.null(start)) start <- cursor - nchar(token)
+    list(start = start, candidates = I(utils::head(comps, limit)))
+  }), error = function(e) NULL)
+  if (is.null(res)) res <- list(start = cursor, candidates = I(character()))
+  json(res)
+}
 
 # ---------------------------------------------------------------- data viewer
 
@@ -556,4 +583,12 @@ local({
     assign(fn, f, envir = ns)
     lockBinding(fn, ns)
   }
+  # mclapply() over fewer than two items calls mcaffinity(), whose C code needs
+  # sched_getaffinity(); webR's libc lacks it, so the call aborts R whatever mc.cores
+  # is. There is no CPU affinity to report or set here.
+  mcaffinity <- function(affinity = NULL) NULL
+  environment(mcaffinity) <- ns
+  unlockBinding("mcaffinity", ns)
+  assign("mcaffinity", mcaffinity, envir = ns)
+  lockBinding("mcaffinity", ns)
 })

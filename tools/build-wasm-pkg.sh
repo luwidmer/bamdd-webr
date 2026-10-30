@@ -19,6 +19,11 @@
 # source first. jinjar needs one: the nlohmann/json copy vendored inside inja writes
 # `auto* const` where libstdc++ yields a raw pointer but Emscripten's libc++ yields
 # std::__wrap_iter, so it does not compile. That is why no wasm build of it exists.
+# Matrix needs one too: its vendored CHOLMOD passes a negative band limit through a
+# size_t, which on wasm32 turns positive, so crossprod() of an RsparseMatrix and
+# solve(<CHMfactor>, system = "L") come back empty. sass and vroom carry the webR
+# fixes rwasm builds for repo.r-wasm.org: libsass compiled with wasm exceptions, and
+# vroom's std::async() work launched deferred, as webR's side modules cannot start threads.
 set -euo pipefail
 
 pkg="${1:-}"
@@ -70,6 +75,14 @@ fi
 # silently rebuilds the unpatched sources.
 rm -rf "$stage/repo"
 
+# LinkingTo headers are installed in the image at the versions the library will carry:
+# a package already built into build/wasm-extra first (it displaces the upstream build,
+# as TMB does for mmrm), else the version lib/MANIFEST.tsv pins. The first match wins.
+built_pins="$(cd "$out" && for f in *.tgz; do
+  if [ -e "$f" ]; then printf '%s,' "$(basename "$f" .tgz | sed 's/_/=/')"; fi
+done)"
+pins="${built_pins}$(awk -F'\t' 'NR > 1 { printf "%s%s=%s", sep, $1, $2; sep = "," }' "$root/lib/MANIFEST.tsv")"
+
 echo "[build-wasm-pkg] cross-compiling in $image"
 cd "$docker_dir"
 RBEST_SRC="$best" \
@@ -82,6 +95,7 @@ WEBR_TAG="${WEBR_TAG:-v0.6.0}" \
     -e WASM_REPO_DIR="/out/repo" \
     -e WASM_PKG_DEPS="${WASM_PKG_DEPS:-FALSE}" \
     -e WASM_PKG_STAN="${WASM_PKG_STAN:-}" \
+    -e WASM_PKG_PINS="$pins" \
     -e WASM_TBB_STUB="/tools/wasm-patches/webr-tbb-stubs.cpp" \
     build R -q -f /tools/build-wasm-pkg.R
 

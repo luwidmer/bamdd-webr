@@ -1,6 +1,5 @@
 # A stand-in for rstan::sampling() on a precompiled rstantools model: the model's
-# Stan code is run on stanli instead of its compiled C++. `code` lets a caller
-# substitute a rewritten program.
+# Stan code is run on stanli instead of its compiled C++.
 #
 # rstan's arguments are honoured where stanli has an equivalent. `cores` spreads
 # the chains over webR workers when miraiWebR has started some; `open_progress`
@@ -13,7 +12,7 @@ stanli_sampling <- function(object, data = list(), pars = NA, chains = 4L, iter 
                             include = TRUE, cores = getOption("mc.cores", 1L),
                             open_progress = FALSE, check_unknown_args = TRUE,
                             show_messages = TRUE, save_warmup = TRUE,
-                            refresh = max(iter %/% 10, 1), code = object@model_code, ...) {
+                            refresh = max(iter %/% 10, 1), ...) {
   if (!identical(algorithm, "NUTS")) {
     stop("stanli only samples with NUTS; algorithm = \"", algorithm, "\" is not supported",
          call. = FALSE)
@@ -33,15 +32,37 @@ stanli_sampling <- function(object, data = list(), pars = NA, chains = 4L, iter 
     stop("control entries not supported by stanli: ", paste(unsupported, collapse = ", "),
          call. = FALSE)
   }
-  fit <- sample_stanfit(
-    code = code, data = data, chains = chains, warmup = warmup,
+  fit <- tryCatch(sample_stanfit(
+    code = object@model_code, data = data, chains = chains, warmup = warmup,
     samples = iter - warmup, thin = thin, seed = seed, init = rstan_init(init, chains),
     delta = control$adapt_delta %||% 0.8, max_depth = control$max_treedepth %||% 10,
     refresh = if (isTRUE(show_messages)) refresh else 0, save_warmup = save_warmup,
     cores = cores, pars = if (identical(pars, NA)) NULL else pars, include = include,
     metric = control$metric, step_size = control$stepsize,
     adapt_engaged = control$adapt_engaged
-  )
+  ), stanliWebR_incomplete_model = function(e) {
+    # A package's precompiled model still samples, with rstan, only more slowly --
+    # but not in webR: there all wasm modules share one symbol table, and once stanli's
+    # runtime is loaded a compiled rstan model crashes ("memory access out of bounds").
+    if (methods::is(object, "stanliWebR_stanmodel")) stop(e)
+    if (in_webr()) {
+      stop(structure(class = class(e), list(call = NULL, message = paste0(
+        conditionMessage(e), "\n\nIn webR rstan's compiled model cannot run once stanli is ",
+        "loaded. Restart R and run this without library(stanliWebR) to sample the model ",
+        "with rstan, which is slower."
+      ))))
+    }
+    message("stanli cannot compute all of this model's outputs; sampling it with rstan instead.")
+    rstan_method <- methods::selectMethod("sampling", "stanmodel")
+    rstan_method(
+      object, data = data, pars = pars, chains = chains, iter = iter, warmup = warmup,
+      thin = thin, seed = seed, init = init, check_data = check_data,
+      sample_file = sample_file, diagnostic_file = diagnostic_file, verbose = verbose,
+      algorithm = algorithm, control = control, include = include, cores = 1L,
+      open_progress = open_progress, show_messages = show_messages,
+      save_warmup = save_warmup, refresh = refresh
+    )
+  })
   fit@model_name <- object@model_name
   fit
 }
@@ -80,3 +101,5 @@ swap_call <- function(fun, from, to) {
   body(fun) <- new_body
   fun
 }
+
+in_webr <- function() grepl("emscripten", R.version$os, fixed = TRUE)

@@ -12,7 +12,7 @@ use_stanli_for_rstan()
 \description{
 Makes the plain rstan workflow, \code{\link[rstan:stan_model]{rstan::stan_model()}} followed by
 \code{\link[rstan:sampling]{rstan::sampling()}}, work without a C++ toolchain. \code{stan_model()} keeps the
-Stan code instead of compiling it and returns a \code{stanli_stanmodel}, a subclass
+Stan code instead of compiling it and returns a \code{stanliWebR_stanmodel}, a subclass
 of rstan's \code{stanmodel}; \code{sampling()} on it runs the program on stanli and
 returns an ordinary rstan \code{stanfit}. Loading stanliWebR arranges for this to
 happen whenever rstan is loaded.

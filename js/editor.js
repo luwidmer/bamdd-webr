@@ -1,3 +1,5 @@
+import { CompletionPopup, commonPrefix, insertion } from './complete.js';
+
 const CM_THEMES = { light: 'eclipse', dark: 'material-darker' };
 
 // The stock R mode tags every identifier "variable", so a call is indistinguishable
@@ -27,7 +29,7 @@ window.CodeMirror.defineMode('r', (config, parserConfig) => {
 });
 
 export class Editor {
-  constructor(host, tabsHost, { onRun, onSelect, theme }) {
+  constructor(host, tabsHost, { onRun, onSelect, complete, theme }) {
     this.host = host;
     this.tabsHost = tabsHost;
     // The strip's scrollbar is hidden, so let a mouse wheel scroll it sideways.
@@ -57,6 +59,8 @@ export class Editor {
         // The box stays open: Enter / Shift+Enter step through matches, Esc closes it.
         'Cmd-F': 'findPersistent',
         'Ctrl-F': 'findPersistent',
+        Tab: () => this.tabKey(),
+        'Ctrl-Space': () => this.requestCompletion(),
       },
     });
 
@@ -67,6 +71,133 @@ export class Editor {
         this.renderTabs();
       }
     });
+
+    this.complete = complete;
+    // A completion request in flight is dropped once this moves on.
+    this.completionSeq = 0;
+    // { line, start, all } while the list is open: candidates replace [start, cursor).
+    this.completion = null;
+    this.popup = new CompletionPopup({ onPick: (c) => this.applyCompletion(c) });
+    // Above extraKeys while the list is open.
+    this.popupKeys = {
+      Up: () => this.popup.move(-1),
+      Down: () => this.popup.move(1),
+      Enter: () => this.applyCompletion(this.popup.selected),
+      Tab: () => this.applyCompletion(this.popup.selected),
+      Esc: () => this.closeCompletion(),
+    };
+    this.cm.on('cursorActivity', () => this.updateCompletion());
+    this.cm.on('blur', () => this.closeCompletion());
+    this.cm.on('scroll', () => this.positionCompletion());
+  }
+
+  /** Tab completes after text and keeps its usual meaning anywhere else. */
+  tabKey() {
+    const cur = this.cm.getCursor();
+    const before = this.cm.getLine(cur.line).slice(0, cur.ch);
+    if (this.cm.somethingSelected() || !/\S/.test(before)) return window.CodeMirror.Pass;
+    this.requestCompletion();
+    return undefined;
+  }
+
+  /** A key from the phone key row, by its KeyboardEvent.key name. */
+  pressKey(key) {
+    if (this.completion && (key === 'ArrowUp' || key === 'ArrowDown')) {
+      this.popup.move(key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
+    switch (key) {
+      case 'Tab':
+        if (this.completion) this.applyCompletion(this.popup.selected);
+        else if (this.tabKey() === window.CodeMirror.Pass) this.cm.execCommand('defaultTab');
+        return;
+      case 'Escape':
+        this.closeCompletion();
+        return;
+      case 'ArrowUp':
+        this.cm.execCommand('goLineUp');
+        return;
+      case 'ArrowDown':
+        this.cm.execCommand('goLineDown');
+        return;
+      case 'ArrowLeft':
+        this.cm.execCommand('goCharLeft');
+        return;
+      case 'ArrowRight':
+        this.cm.execCommand('goCharRight');
+        return;
+      default:
+    }
+  }
+
+  /** Complete the token before the cursor from R, which knows the live session's objects. */
+  async requestCompletion() {
+    if (!this.complete || !this.activePath) return;
+    const cm = this.cm;
+    const doc = cm.getDoc();
+    const cur = cm.getCursor();
+    const line = cm.getLine(cur.line);
+    const seq = ++this.completionSeq;
+    let res;
+    try {
+      res = await this.complete(line, cur.ch);
+    } catch {
+      return;
+    }
+    if (!res || seq !== this.completionSeq || cm.getDoc() !== doc) return;
+    const now = cm.getCursor();
+    if (now.line !== cur.line || now.ch !== cur.ch || cm.getLine(cur.line) !== line) return;
+    const { start, candidates } = res;
+    this.completion = { line: cur.line, start, all: candidates };
+    if (candidates.length === 1) {
+      this.applyCompletion(candidates[0]);
+      return;
+    }
+    cm.addKeyMap(this.popupKeys);
+    this.popup.setItems(candidates);
+    const token = line.slice(start, cur.ch);
+    const prefix = commonPrefix(candidates);
+    // Moves the cursor, so cursorActivity narrows the list to the new prefix.
+    if (prefix.length > token.length && prefix.startsWith(token)) {
+      cm.replaceRange(prefix, { line: cur.line, ch: start }, cur, '+complete');
+    }
+    this.positionCompletion();
+  }
+
+  applyCompletion(candidate) {
+    if (!this.completion || candidate == null) return;
+    const { line, start } = this.completion;
+    this.closeCompletion();
+    this.cm.replaceRange(insertion(candidate), { line, ch: start }, this.cm.getCursor(), '+complete');
+  }
+
+  /** Narrow the open list to what has been typed since, or close it. */
+  updateCompletion() {
+    if (!this.completion) return;
+    const { line, start, all } = this.completion;
+    const cur = this.cm.getCursor();
+    const token = cur.line === line && cur.ch >= start ? this.cm.getLine(line).slice(start, cur.ch) : null;
+    const items = token == null || /[\s(),;]/.test(token) ? [] : all.filter((c) => c.startsWith(token));
+    if (!items.length || (items.length === 1 && items[0] === token)) {
+      this.closeCompletion();
+      return;
+    }
+    this.popup.setItems(items);
+    this.positionCompletion();
+  }
+
+  positionCompletion() {
+    if (!this.completion) return;
+    const { line, start } = this.completion;
+    this.popup.show(this.cm.cursorCoords({ line, ch: start }, 'window'));
+  }
+
+  closeCompletion() {
+    this.completionSeq++;
+    if (!this.completion && !this.popup.isOpen) return;
+    this.completion = null;
+    this.popup.close();
+    this.cm.removeKeyMap(this.popupKeys);
   }
 
   open(path, text) {
@@ -95,6 +226,7 @@ export class Editor {
   select(key) {
     const entry = this.tabs.get(key);
     if (!entry) return;
+    this.closeCompletion();
     this.active = key;
     for (const [k, other] of this.tabs) {
       if (other.element) other.element.hidden = k !== key;

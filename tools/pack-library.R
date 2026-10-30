@@ -58,23 +58,28 @@ if (isTRUE(grepl("SHIM", rstan_title, fixed = TRUE))) {
 
 # Headers and static archives exist for LinkingTo, and nothing compiles in the
 # browser. "libs" (the .so files) is emphatically not in this list; neither are
-# help/html, which keep ?topic working in the terminal.
-STRIP_DIRS <- c("include", "lib")
+# help/html, which keep ?topic working in the terminal. lib/ loses only its static
+# archives: bslib keeps its Bootstrap Sass sources and themes there, and jquerylib
+# its jQuery, both needed at run time.
 stripped <- 0
 for (pkg in pkgs) {
-  for (sub in STRIP_DIRS) {
-    path <- file.path(lib_dir, pkg, sub)
-    if (dir.exists(path)) {
-      stripped <- stripped +
-        sum(file.info(list.files(path, recursive = TRUE, full.names = TRUE))$size, na.rm = TRUE)
-      unlink(path, recursive = TRUE)
-    }
+  path <- file.path(lib_dir, pkg, "include")
+  doomed <- if (dir.exists(path)) list.files(path, recursive = TRUE, full.names = TRUE)
+  doomed <- c(doomed, list.files(file.path(lib_dir, pkg, "lib"), pattern = "\\.a$",
+    recursive = TRUE, full.names = TRUE))
+  if (length(doomed)) {
+    stripped <- stripped + sum(file.info(doomed)$size, na.rm = TRUE)
+    unlink(doomed)
+  }
+  for (sub in c("include", "lib")) {
+    dir <- file.path(lib_dir, pkg, sub)
+    if (dir.exists(dir) && !length(list.files(dir, recursive = TRUE))) unlink(dir, recursive = TRUE)
   }
 }
-if (stripped > 0) say(sprintf("Stripped %s: %.0f MB", paste(STRIP_DIRS, collapse = "/"), stripped / 1e6))
+if (stripped > 0) say(sprintf("Stripped include/ and static archives: %.0f MB", stripped / 1e6))
 
 # rstan:::.onLoad() sources this with mustWork = TRUE; it sits beside the stripped
-# directories rather than inside them, so a change to STRIP_DIRS must not take it.
+# directories rather than inside them, so a change to the stripping must not take it.
 stanc <- file.path(lib_dir, "StanHeaders", "stanc.js")
 if (!file.exists(stanc)) die("StanHeaders/stanc.js is gone; rstan will fail to load.")
 
@@ -130,3 +135,4 @@ say("Filesystem index verified:", length(expected), "files")
 
 say(sprintf("Image: %s (%.0f MB)", image, file.size(image) / 1e6))
 say("Mount it from R with: webr::mount('/library', '<origin>/lib/library.tar.gz')")
+say("Test every package against it:  npm run test-packages   (see README, \"Testing the packages\")")

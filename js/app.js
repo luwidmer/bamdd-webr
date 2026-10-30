@@ -1,6 +1,7 @@
 import { Session, rString } from './session.js';
 import { Terminal } from './terminal.js';
 import { Editor } from './editor.js';
+import { requestCompletions } from './complete.js';
 import { Plots } from './plots.js';
 import { Viewer } from './viewer.js';
 import { FileTree } from './files.js';
@@ -113,6 +114,8 @@ async function main() {
     onInput: (line) => session.stdin(line),
     onInterrupt: () => session.interrupt(),
     onPrompt: (prompt) => setDebugging(/^Browse\[\d+\]> $/.test(prompt)),
+    // Asked only at a prompt, where R is free to answer.
+    complete: (line, cursor) => requestCompletions(query, line, cursor),
     theme: theme.resolved(),
     onBusyChange: (busy) => {
       const pill = $('status-busy');
@@ -153,7 +156,24 @@ async function main() {
     onRun: (code) => {
       terminal.enqueue(code);
     },
+    complete: (line, cursor) => (ready && !restarting && !terminal.busy ? requestCompletions(query, line, cursor) : null),
   });
+
+  // Keys a phone keyboard lacks, shown while the console or the editor has the keyboard.
+  for (const row of document.querySelectorAll('.key-row')) {
+    const target = row.dataset.target === 'console' ? terminal : editor;
+    const pane = row.closest('.pane');
+    // Keep focus, and with it the on-screen keyboard, where it is.
+    row.addEventListener('mousedown', (e) => e.preventDefault());
+    row.addEventListener('click', (e) => {
+      const key = e.target.closest('button')?.dataset.key;
+      if (key) target.pressKey(key);
+    });
+    pane.addEventListener('focusin', (e) => {
+      if (e.target === terminal.term.textarea || e.target.closest('.CodeMirror')) pane.classList.add('typing');
+    });
+    pane.addEventListener('focusout', () => pane.classList.remove('typing'));
+  }
 
   const files = new FileTree($('file-tree'), session, {
     onOpenFile: (path, text) => {

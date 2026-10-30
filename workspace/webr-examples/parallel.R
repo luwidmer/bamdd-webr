@@ -54,9 +54,8 @@ everywhere({
 mirai_map(c(-2, 0, 2), function(x) inv_logit(x))[.flat]
 
 # ---- parallel MCMC chains -------------------------------------------------------
-# With workers running, cores > 1 samples each chain on a worker of its own. Chain 1
-# is the same as in a sequential fit; the others use different seeds, so the fit is
-# reproducible but not identical to cores = 1.
+# With workers running, cores > 1 samples each chain on a worker of its own, with the
+# random stream it has in a sequential fit, so the fit is identical to cores = 1.
 library(stanliWebR)
 library(brms)
 fit <- brm(count ~ zAge + zBase * Trt + (1 | patient), data = epilepsy,

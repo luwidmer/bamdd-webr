@@ -1,0 +1,142 @@
+Backport of r-wasm's webR fix for vroom: commit d0640b2 on the webr branch of
+https://github.com/r-wasm/vroom ("Force deferred policy for std::async() in webR",
+George Stagg; MIT), which rwasm builds for repo.r-wasm.org (its webr-remotes list).
+CRAN's vroom starts its indexing and writing work with std::async(std::launch::async),
+which needs a thread; webR's side modules have none, so every vroom() call -- and with
+it readr::read_csv() -- fails with "thread constructor failed: Not supported". Under
+Emscripten the patch launches that work deferred, on the calling thread.
+`patch` ignores this text before the first diff header.
+
+diff --git a/src/delimited_index.cc b/src/delimited_index.cc
+index 250943d94..a04f83d60 100644
+--- a/src/delimited_index.cc
++++ b/src/delimited_index.cc
+@@ -180,7 +180,11 @@ delimited_index::delimited_index(
+     std::vector<std::future<void>> threads;
+ 
+     if (num_threads == 1) {
++#ifdef __EMSCRIPTEN__
++      threads.emplace_back(std::async(vroom::async::policy, [&] {
++#else
+       threads.emplace_back(std::async(std::launch::async, [&] {
++#endif
+         n_max = n_max > lines_read ? n_max - lines_read : 0;
+         index_region(
+             mmap_,
+@@ -251,6 +255,12 @@ delimited_index::delimited_index(
+           false);
+     }
+ 
++#ifdef __EMSCRIPTEN__
++    for (auto& t : threads) {
++      t.wait();
++    }
++#endif
++
+     if (progress_) {
+ #ifndef VROOM_STANDALONE
+       pb->display_progress();
+diff --git a/src/delimited_index_connection.cc b/src/delimited_index_connection.cc
+index ef88ee381..237bd67be 100644
+--- a/src/delimited_index_connection.cc
++++ b/src/delimited_index_connection.cc
+@@ -186,7 +186,8 @@ delimited_index_connection::delimited_index_connection(
+     n_max = n_max > lines_read ? n_max - lines_read : 0;
+ 
+     if (n_max > 0) {
+-      parse_fut = std::async([&, i, sz, first_nl, total_read] {
++      parse_fut = std::async(vroom::async::policy,
++        [&, i, sz, first_nl, total_read] {
+         lines_read = index_region(
+             buf[i],
+             idx_[1],
+@@ -215,7 +216,7 @@ delimited_index_connection::delimited_index_connection(
+         break;
+       }
+     }
+-    write_fut = std::async([&, i, sz] {
++    write_fut = std::async(vroom::async::policy, [&, i, sz] {
+       size_t written = std::fwrite(buf[i].data(), sizeof(char), sz, out);
+       if (written != sz) {
+         write_error.store(true);
+diff --git a/src/fixed_width_index_connection.cc b/src/fixed_width_index_connection.cc
+index 5110ffd22..35c241cad 100644
+--- a/src/fixed_width_index_connection.cc
++++ b/src/fixed_width_index_connection.cc
+@@ -116,7 +116,7 @@ fixed_width_index_connection::fixed_width_index_connection(
+     }
+     lines_remaining -= lines_read;
+ 
+-    parse_fut = std::async([&, i, start, total_read, sz] {
++    parse_fut = std::async(vroom::async::policy, [&, i, start, total_read, sz] {
+       lines_read = index_region(
+           buf[i],
+           newlines_,
+@@ -132,7 +132,7 @@ fixed_width_index_connection::fixed_width_index_connection(
+     if (write_fut.valid()) {
+       write_fut.wait();
+     }
+-    write_fut = std::async([&, i, sz] {
++    write_fut = std::async(vroom::async::policy, [&, i, sz] {
+       size_t written = std::fwrite(buf[i].data(), sizeof(char), sz, out);
+       if (written != sz) {
+         write_error.store(true);
+diff --git a/src/utils.h b/src/utils.h
+index 9faa4ad8a..92b6fbbec 100644
+--- a/src/utils.h
++++ b/src/utils.h
+@@ -3,12 +3,25 @@
+ #include <array>
+ #include <cpp11/R.hpp>
+ #include <cstring>
++#include <future>
+ #include <sstream>
+ #include <string>
+ #include <tuple>
+ 
+ namespace vroom {
+ 
++// Force deferred std::async() launch policy under WebAssembly
++// TODO: Remove this when Emscripten better handles using both pthreads
++// and SIDE_MODULES at the same time.
++class async {
++public:
++#ifdef __EMSCRIPTEN__
++  static const std::launch policy = std::launch::deferred;
++#else
++  static const std::launch policy = std::launch::any;
++#endif
++};
++
+ inline bool
+ is_comment(const char* begin, const char* end, const std::string& comment) {
+   if (comment.empty() || comment.size() > static_cast<size_t>(end - begin)) {
+diff --git a/src/vroom_write.cc b/src/vroom_write.cc
+index 46588926b..cc1ace22d 100644
+--- a/src/vroom_write.cc
++++ b/src/vroom_write.cc
+@@ -368,6 +368,7 @@ void vroom_write_out(
+       auto num_lines = std::min(buf_lines, num_rows - begin);
+       auto end = begin + num_lines;
+       futures[idx][t++] = std::async(
++          vroom::async::policy,
+           fill_buf,
+           std::cref(input),
+           delim,
+@@ -388,7 +389,7 @@ void vroom_write_out(
+       }
+     }
+ 
+-    write_fut = std::async([&, idx, t] {
++    write_fut = std::async(vroom::async::policy, [&, idx, t] {
+       size_t sz = 0;
+       for (size_t i = 0; i < t; ++i) {
+         auto buf = futures[idx][i].get();
+@@ -513,6 +514,7 @@ void vroom_write_out(
+       auto num_lines = std::min(buf_lines, num_rows - begin);
+       auto end = begin + num_lines;
+       futures[idx][t++] = std::async(
++          vroom::async::policy,
+           fill_buf,
+           std::cref(input),
+           delim,

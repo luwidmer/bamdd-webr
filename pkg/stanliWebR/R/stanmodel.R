@@ -2,7 +2,7 @@
 #'
 #' Makes the plain rstan workflow, [rstan::stan_model()] followed by
 #' [rstan::sampling()], work without a C++ toolchain. `stan_model()` keeps the
-#' Stan code instead of compiling it and returns a `stanli_stanmodel`, a subclass
+#' Stan code instead of compiling it and returns a `stanliWebR_stanmodel`, a subclass
 #' of rstan's `stanmodel`; `sampling()` on it runs the program on stanli and
 #' returns an ordinary rstan `stanfit`. Loading stanliWebR arranges for this to
 #' happen whenever rstan is loaded.
@@ -27,11 +27,12 @@
 use_stanli_for_rstan <- function() {
   require_namespaces("rstan", c("rstan", "stanli"))
   # The namespace is sealed once loaded, and rstan need not be attached: define the
-  # class and method where rstan's own definitions are visible.
+  # class and method where rstan's own definitions are visible. The name differs from
+  # stanli's own stanli_stanmodel, which stanli registers whenever rstan loads.
   where <- new.env(parent = asNamespace("rstan"))
-  methods::setClass("stanli_stanmodel", contains = "stanmodel", where = where)
+  methods::setClass("stanliWebR_stanmodel", contains = "stanmodel", where = where)
   methods::setMethod(
-    "sampling", "stanli_stanmodel",
+    "sampling", "stanliWebR_stanmodel",
     function(object, ...) stanli_sampling(object, ...),
     where = where
   )
@@ -67,5 +68,5 @@ stanli_stan_model <- function(file, model_name = "anon_model", model_code = "",
   # stanli builds the model only when the data are known; report errors in the
   # program now, as rstan's compile would.
   stanli::stanli_check_syntax(model_code)
-  methods::new("stanli_stanmodel", model_name = model_name, model_code = model_code)
+  methods::new("stanliWebR_stanmodel", model_name = model_name, model_code = model_code)
 }

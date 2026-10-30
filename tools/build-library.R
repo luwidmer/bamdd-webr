@@ -27,11 +27,15 @@ R_CONTRIB <- "4.6"
 #
 # The local repo is a `local:` marker rather than a file:// URL so the committed
 # manifest stays portable across checkouts; it is resolved against the repo root
-# at download time. It holds only the packages that have no usable upstream wasm
-# build and must be cross-compiled (tools/vendor-wasm-repo.R), so putting it first
-# cannot silently displace any other pinned version.
+# at download time. It holds the packages that have no usable upstream wasm build
+# and must be cross-compiled (tools/vendor-wasm-repo.R). sass, vroom and mmrm are among
+# them on purpose: repo.r-wasm.org and openpharma's universe only carry unreleased
+# development builds of them (sass and vroom .9000, mmrm .9000 far ahead of
+# repo.r-wasm.org's 0.2.2), whose sources -- and so whose tests -- cannot be pinned.
+# Matrix is there too, rebuilt with a fix to its vendored CHOLMOD, which returns empty
+# crossprod() results on webR's 32-bit size_t (tools/wasm-patches/Matrix_*.patch).
+# Putting it first lets these displace the upstream builds, and nothing else.
 #
-# openpharma carries mmrm far newer than repo.r-wasm.org's 0.2.2, and
 # insightsengineering carries a released rbmi rather than openpharma's .9000 dev
 # build. seantalts is stanli's author and holds nothing else. brms is CRAN's, from
 # repo.r-wasm.org: none of the universes above it carries brms.
@@ -44,7 +48,6 @@ REPOS <- c(
   LOCAL_REPO,
   "https://seantalts.r-universe.dev",
   "https://insightsengineering.r-universe.dev",
-  "https://openpharma.r-universe.dev",
   "https://repo.r-wasm.org"
 )
 
@@ -72,7 +75,10 @@ EXAMPLE_PACKAGES <- c(
   # workspace/webr-examples/reproducibility.R, workspace/bamdd_leiden2026_exercises.R
   "digest", "withr",
   # workspace/webr-examples/parallel.R
-  "future", "future.apply"
+  "future", "future.apply",
+  # Meta-analysis next to RBesT's MAP priors: bayesmeta for Bayesian random-effects
+  # meta-analysis, metafor for the classical one.
+  "bayesmeta", "metafor"
 )
 
 ALL_TARGETS <- c(TARGETS, EXAMPLE_PACKAGES)
@@ -240,6 +246,10 @@ resolve_closure <- function(db) {
 
   mat <- as.matrix(db[, c("Package", "Version", "Depends", "Imports")])
   rownames(mat) <- db$Package
+  # Drop base packages before recursing: repo.r-wasm.org also carries an unrelated CRAN
+  # package named webr, so a package importing webR's own webr (httpuv does) would
+  # otherwise pull in that one's dependencies.
+  mat <- mat[!rownames(mat) %in% BASE_PKGS, , drop = FALSE]
 
   deps <- tools::package_dependencies(
     packages = ALL_TARGETS, db = mat, which = DEP_TYPES, recursive = TRUE

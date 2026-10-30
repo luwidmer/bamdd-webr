@@ -1,9 +1,15 @@
-# Build the seven wasm packages that have no usable upstream build (five cross-compiled,
+# Build the twelve wasm packages that have no usable upstream build (ten cross-compiled,
 # two first-party), and publish them as a Release asset that deploy.yml consumes.
+# sass, vroom and mmrm do have upstream builds, but only of unreleased development
+# versions; building the CRAN releases here keeps every package's source, and so its
+# tests (tools/test-packages.mjs), tied to a published release. Matrix has one too, but
+# its vendored CHOLMOD returns empty results on a 32-bit size_t, which
+# tools/wasm-patches/Matrix_<version>.patch fixes. TMB's upstream build (1.9.11) is too
+# old to compile mmrm against.
 #
 # Runs a handful of times a year, needs no Cloudflare credentials, and opens a pull
 # request with the regenerated lib/MANIFEST.tsv rather than committing it: R CMD INSTALL
-# output is not byte-reproducible, so every rebuild changes all seven sha256 sums, and the
+# output is not byte-reproducible, so every rebuild changes all twelve sha256 sums, and the
 # manifest diff is this project's only drift detection.
 #
 # Nothing here changes when deploy.yml gains its push/pull_request triggers
@@ -23,6 +29,18 @@ on:
         default: 0.10-0
       jinjar_version:
         default: 0.3.2
+      sass_version:
+        default: 0.4.10
+      vroom_version:
+        default: 1.7.1
+      tmb_version:
+        description: TMB CRAN version; mmrm compiles against its headers
+        default: 1.9.25
+      mmrm_version:
+        default: 0.3.19
+      matrix_version:
+        description: Matrix CRAN version; tools/wasm-patches must have a patch for it
+        default: 1.7-6
       webr_tag:
         description: must match WEBR_VERSION in tools/fetch-webr.sh
         default: v0.6.0
@@ -43,6 +61,11 @@ jobs:
       RBEST_VERSION: ${{ inputs.rbest_version }}
       ONCOBAYES2_VERSION: ${{ inputs.oncobayes2_version }}
       JINJAR_VERSION: ${{ inputs.jinjar_version }}
+      SASS_VERSION: ${{ inputs.sass_version }}
+      VROOM_VERSION: ${{ inputs.vroom_version }}
+      TMB_VERSION: ${{ inputs.tmb_version }}
+      MMRM_VERSION: ${{ inputs.mmrm_version }}
+      MATRIX_VERSION: ${{ inputs.matrix_version }}
     outputs:
       tag: ${{ steps.pack.outputs.tag }}
       sha256: ${{ steps.pack.outputs.sha256 }}
@@ -111,6 +134,33 @@ jobs:
           tools/build-wasm-pkg.sh OncoBayes2 "$ONCOBAYES2_VERSION"
           WASM_PKG_STAN= tools/build-wasm-pkg.sh jinjar "$JINJAR_VERSION"
 
+      # Both apply tools/wasm-patches/<pkg>_<version>.patch, the webR fixes rwasm builds
+      # for repo.r-wasm.org: without them libsass lacks wasm exceptions, so the first Sass
+      # error aborts webR, and vroom (so readr::read_csv()) fails for want of a thread.
+      - name: Cross-compile the CRAN releases of sass and vroom
+        run: |
+          tools/build-wasm-pkg.sh sass "$SASS_VERSION"
+          tools/build-wasm-pkg.sh vroom "$VROOM_VERSION"
+
+      # Not optional: without the patch Matrix returns empty crossprod() results. Fail
+      # rather than build the upstream bug back in when the version moves.
+      - name: Cross-compile Matrix with the CHOLMOD fix
+        run: |
+          test -f "tools/wasm-patches/Matrix_${MATRIX_VERSION}.patch" || {
+            echo "No tools/wasm-patches/Matrix_${MATRIX_VERSION}.patch: check whether CHOLMOD's cholmod_copy still needs it" >&2
+            exit 1
+          }
+          tools/build-wasm-pkg.sh Matrix "$MATRIX_VERSION"
+
+      # After Matrix, which TMB links to. repo.r-wasm.org's TMB 1.9.11 no longer compiles
+      # against R 4.6 (non-API Rf_findVar, C++20 constructors), and mmrm 0.3.x wants
+      # TMB >= 1.9.15 headers. build-wasm-pkg.sh pins each LinkingTo package to what is
+      # already in build/wasm-extra, so mmrm compiles against this TMB.
+      - name: Cross-compile TMB, then mmrm against it
+        run: |
+          tools/build-wasm-pkg.sh TMB "$TMB_VERSION"
+          tools/build-wasm-pkg.sh mmrm "$MMRM_VERSION"
+
       # The containers write as root.
       - name: Take ownership of the Docker output
         if: always()
@@ -134,7 +184,7 @@ jobs:
           echo "sha256=$sha" >> "$GITHUB_OUTPUT"
           tar tzf "bundle/$tag/$tag.tar.gz" | grep -c 'contrib/4.6/.*\.tgz$'
 
-      # --resolve re-queries the four remote repositories, so the diff may also carry
+      # --resolve re-queries the three remote repositories, so the diff may also carry
       # unrelated r-universe movement. That is exactly what wants reviewing.
       # The files it hashed become the second asset: upstream rebuilds in place under the
       # same URL and expires old builds, so deploys never download from it again.
@@ -271,7 +321,7 @@ jobs:
             smoke test) before this pull request was opened; `deploy.yml` does not run on
             pull requests opened by a workflow.
 
-            Review `lib/MANIFEST.tsv` before merging. The seven `local:vendor/wasm-repo`
+            Review `lib/MANIFEST.tsv` before merging. The twelve `local:vendor/wasm-repo`
             rows are expected to change sha256 on every rebuild; any other movement
             came from `--resolve` re-querying the remote repositories.
           add-paths: |

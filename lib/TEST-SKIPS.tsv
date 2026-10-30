@@ -1,0 +1,622 @@
+# Package tests that are accepted to fail, each with the reason. tools/test-packages.mjs
+# fails the run on any failure not listed here, on a listed entry that no longer fails,
+# and on a reason left as TODO. Columns, tab-separated: package, test file ("*" for
+# all), test ("*" for all; "(script)", "(file)" and "(crash)" for whole files), the depth
+# it applies to (cran, full or both), reason. A reason starting "flaky:" marks a test
+# that fails in some runs only; it is never reported as stale. See README, "Testing the
+# packages".
+package	file	test	depth	reason
+bit64	test-integer64.R	hex edge cases return missing string= 0x	both	Emscripten's libc strtoll() reads a bare "0x" as 0, so as.integer64("0x") is 0 without a warning in webR; glibc and macOS stop after the 0, and bit64 then gives NA with a warning
+bit64	test-integer64.R	hex edge cases return missing string=-0x	both	Emscripten's libc strtoll() reads a bare "0x" as 0, so as.integer64("0x") is 0 without a warning in webR; glibc and macOS stop after the 0, and bit64 then gives NA with a warning
+bit64	test-integer64.R	hex edge cases return missing string=0x	both	Emscripten's libc strtoll() reads a bare "0x" as 0, so as.integer64("0x") is 0 without a warning in webR; glibc and macOS stop after the 0, and bit64 then gives NA with a warning
+bit64	test-integer64.R	hex edge cases return missing string=0x 	both	Emscripten's libc strtoll() reads a bare "0x" as 0, so as.integer64("0x") is 0 without a warning in webR; glibc and macOS stop after the 0, and bit64 then gives NA with a warning
+bridgesampling	test-bridge_sampler_parallel.R	bridge sampler matches anlytical value normal example	full	forks (parallel::mcfork); webR has no fork()
+bridgesampling	test-stan_bridge_sampler_basic.R	stan_bridge_sampler in multicore	full	forks (parallel::mcfork); webR has no fork()
+bridgesampling	test-stan_bridge_sampler_bugs.R	bridge_sampler.stanfit multicore works for one-parameter model.	full	forks (parallel::mcfork); webR has no fork()
+bridgesampling	test-stan_bridge_sampler_bugs.R	subscript out of bounds error	full	the model uses Stan's pre-2.33 array syntax (int N[G]), which stanli does not parse
+bridgesampling	test-stan_bridge_sampler_bugs.R	turtle example	full	the model uses Stan's pre-2.33 array syntax (int y[nobs]), which stanli does not parse
+brms	tests.brmsfit-methods.R	loo has reasonable outputs	full	brms 2.23.0's test reads loo_compare()[2, 1], which loo 2.10 made the model name; fails natively too
+brms	tests.brmsterms.R	brmsterms handles very long RE terms	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+bslib	test-page.R	page_sidebar()	both	snapshot differs from bslib's recording only in the sidebar icon's SVG style attribute (a dependency's version, not webR)
+callr	test-archs.R	r() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-archs.R	r_bg() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-archs.R	r_process to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-archs.R	r_session to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-bugs.R	repos is a list, #82	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-callback.R	callbacks work	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-callback.R	show and callbacks at the same time	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-callback.R	show option works	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r() does not create objects in global env	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r() does not load anything	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r_bg() does not create objects in global env	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r_bg() does not load anything	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r_session does not create objects in global env	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-clean-subprocess.R	r_session does not load anything	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	child error is not modified	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	error behavior can be set using option	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	error is printed to file	both	needs a separate R process (callr); webR has no processes
+callr	test-error.R	errors in r_bg() are merged	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	errors in r_process are merged	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	errors in r_session$call() are merged	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	errors in r_session$run() are merged	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	format.call_status_error	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	interrupting an R session	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	parent errors	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-error.R	parent errors, another level	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	.Renviron is used, but lib path is set over it	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	basic r	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	callr messages do not cause problems	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	cleans up temp files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	cmdargs argument	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	env	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	errors are printed on stderr	both	needs a separate R process (callr); webR has no processes
+callr	test-eval.R	local .Rprofile is loaded	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	local .Rprofile is not loaded from actual wd	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	local .Rprofile is not loaded recursively	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	profiles are used as requested	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	standard error	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	standard output	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	standard output and standard error	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	stdout and stderr are interleaved correctly	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	stdout and stderr in the same file	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	symbolic arguments are protected	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-eval.R	the same R version is called	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-function-env.R	r()	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-function-env.R	r() preserves the environment of crated functions by default	full	needs Suggests package carrier, not in the test library
+callr	test-function-env.R	r_bg()	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-function-env.R	r_bg() preserves the environment of crated functions by default	full	needs Suggests package carrier, not in the test library
+callr	test-function-env.R	r_session	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-function-env.R	r_session$run() preserves the env of crated funcs by default	full	needs Suggests package carrier, not in the test library
+callr	test-hook.R	set options with hook	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	.Library	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	.Library.site	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	.libPaths()	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	if .Renviron overrides R_PROFILE	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath = NULL keeps the subprocess library path of a fresh R session	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system(), empty .Renviron	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system, R_LIBS	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system, R_LIBS and .Renviron	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system, R_LIBS in .Renviron	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system, if subprocess changes R_LIBS	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	libpath in system, if subprocess changes R_LIBS #2	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-libpath.R	setting profile/environ variables in 'env'	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-load-client.R	init function of client lib is run	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-load-client.R	set_stdout, set_stderr	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-load-client.R	set_stdout_file, set_setderr_file	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-load-client.R	write_fd	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-messages.R	messages in callr::r do not crash session	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-messages.R	messages in callr::r_bg do not crash session	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-otel.R	TRACEPARENT is propagated to subprocess	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	callr::r() produces a span when tracing is enabled	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	callr::rcmd() produces a span	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	callr::rscript() produces a span	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	r_process produces a span and records the get_result event	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	r_session produces spans for the session lifecycle	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	r_session$read sets message and status_code attributes	full	needs Suggests package otelsdk, not in the test library
+callr	test-otel.R	subprocess errors generate an exception event	full	needs Suggests package otelsdk, not in the test library
+callr	test-package.R	all figures in man/figures are needed	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+callr	test-presets.R	names of getOption('repos') are preserved	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-presets.R	r	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-presets.R	r_safe	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-presets.R	r_vanilla	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-quit.R	quit() in bg process	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-quit.R	quit() in the function	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	can read standard error	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	can read standard output	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	can read stdout and stderr	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	cleans up temporary files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	r_bg can be killed	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	r_bg can get the error back	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	r_bg exit status is non-zero on error (#291)	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	r_bg runs	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-bg.R	r_bg takes arguments	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-process.R	create and run r_process	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session-messages.R	callr_message, then error	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session-messages.R	large messages	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session-messages.R	message handlers	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	crash	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	custom load hook	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	error in the load hook	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	exit	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	fds are not leaked	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	get stdout/stderr from file	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	interrupt	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	messages	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	messages with R objects	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	regular use	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	run	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	run throws	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	stdout/stderr from pipe	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-r-session.R	traceback	both	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-rcmd-bg.R	r_cmd can be killed	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd-bg.R	r_cmd errors	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd-bg.R	rcmd_bg runs	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd-process.R	cleans up temp files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-rcmd-process.R	create and run rcmd_process	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	cleans up temp files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-rcmd.R	command is included in result	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	fail_on_status	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	rcmd echo works	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	rcmd show works	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	rcmd works	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	rcmd_safe	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	stderr -> stdout	both	needs subprocesses (processx); webR has no processes
+callr	test-rcmd.R	wd argument	both	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	bg process cleans up temporary files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-rscript.R	cleans up temporary files	full	needs a separate R process (callr/Rscript); webR has no processes
+callr	test-rscript.R	pty = TRUE merges stderr into stdout and sets a tty	full	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	rscript	both	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	rscript_process	both	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	rscript_process supports pty = TRUE	full	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	stderr -> stdout	both	needs subprocesses (processx); webR has no processes
+callr	test-rscript.R	stdout = '|' does not hang when child errors (#313)	full	needs subprocesses (processx); webR has no processes
+callr	test-spelling.R	spell check	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+callr	test-timeout.R	r with timeout	both	needs a separate R process (callr); webR has no processes
+callr	test-utils.R	r() works with CALLR_TMPDIR set	both	needs a separate R process (callr/Rscript); webR has no processes
+checkmate	test_include.R	include of registered C functions works	full	needs Suggests package devtools, not in the test library
+cli	test-cliapp-output.R	can also use a connection	full	needs subprocesses (processx); webR has no processes
+cli	test-cliapp-output.R	cliapp output auto	full	needs subprocesses (processx); webR has no processes
+cli	test-defer.R	errors	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+cli	test-package.R	No leftover SVG figures	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+cli	test-progress-along.R	cli_progress_along error	both	progress-handler error tests read output written by a background thread/process; webR has neither
+cli	test-progress-c.R	c api #1	full	needs subprocesses (processx); webR has no processes
+cli	test-progress-c.R	c api #2	full	needs subprocesses (processx); webR has no processes
+cli	test-progress-c.R	unloading stops the thread	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-progress-handler-say.R	say_out	both	needs subprocesses (processx); webR has no processes
+cli	test-progress-message.R	cli_progress_message error	both	progress-handler error tests read output written by a background thread/process; webR has neither
+cli	test-progress-message.R	cli_progress_step error	both	progress-handler error tests read output written by a background thread/process; webR has neither
+cli	test-progress-utils.R	cli_progress_cleanup	both	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-subprocess.R	events are properly generated	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-subprocess.R	output in child process	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-subprocess.R	subprocess with default handler	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-subprocess.R	substitution in child process	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-substitution.R	glue errors	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+cli	test-utf8.R	UTF-8 output on Windows	full	needs a separate R process (callr/Rscript); webR has no processes
+cli	test-utils.R	get_ppid	both	needs process information (ps); webR has no processes
+cli	test-utils.R	get_rstudio_theme	full	needs Suggests package rstudioapi, not in the test library
+desc	test-authors.R	add_me can use ORCID_ID	both	R 4.6 formats ORCID comments in person() as "ORCID: <...>", which desc 1.4.3's tests predate
+desc	test-authors.R	coerce_authors_at_r handles maintainer not being author	both	R 4.6's person() warns where desc 1.4.3's test expects silence
+desc	test-authors.R	we can add an ORCID to an author	both	R 4.6 formats ORCID comments in person() as "ORCID: <...>", which desc 1.4.3's tests predate
+desc	test-authors.R	we can add an author with ORCID	both	R 4.6 formats ORCID comments in person() as "ORCID: <...>", which desc 1.4.3's tests predate
+desc	test-authors.R	we can add an author with ORCID via comment	both	R 4.6 formats ORCID comments in person() as "ORCID: <...>", which desc 1.4.3's tests predate
+desc	test-authors.R	we can replace the ORCID of an author	both	R 4.6 formats ORCID comments in person() as "ORCID: <...>", which desc 1.4.3's tests predate
+desc	test-spelling.R	spelling	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+desc	test-utils.R	deparse	both	needs a separate R process (callr/Rscript); webR has no processes
+distributional	test-dist-dirichlet.R	Dirichlet distribution	both	needs a C toolchain to install source packages
+distributional	test-dist-horseshoe.R	Horseshoe distribution - density	both	needs a C toolchain to install source packages
+distributional	test-dist-horseshoe.R	Horseshoe distribution - generate	both	needs a C toolchain to install source packages
+distributional	test-dist-horseshoe.R	Horseshoe distribution - heavier tails with larger lambda	both	needs a C toolchain to install source packages
+distributional	test-dist-horseshoe.R	Horseshoe distribution - larger tau scales distribution	both	needs a C toolchain to install source packages
+distributional	test_gev.R	GEV	full	needs Suggests package evd, not in the test library
+distributional	test_gpd.R	GPD	full	needs Suggests package evd, not in the test library
+dplyr	test-all-equal.R	equality test fails when convert is FALSE and types don't match (#1484)	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+dplyr	test-all-equal.R	factor comparison requires strict equality of levels (#2440)	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+dplyr	test-all-equal.R	factors equal only if levels equal	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+dplyr	test-arrange.R	legacy - using the deprecated global option `dplyr.legacy_locale` forces the system locale	both	webR has only the C locale's collation, so the system-locale sort orders upper case first
+dplyr	test-bind-rows.R	bind_rows() give informative errors	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+dplyr	test-case-when.R	replace_when() retains the type of `x`	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+dplyr	test-grouped-df.R	using the deprecated global option `dplyr.legacy_locale` forces the system locale	both	webR has only the C locale's collation, so the system-locale sort orders upper case first
+dplyr	test-join-rows.R	join_rows() expects incompatible type errors to have been handled by join_cast_common()	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+dplyr	test-pick.R	can call `pick()` from a user defined function	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+dplyr	test-recode-values.R	`replace_values()` is type stable on `x`	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+evaluate	test-conditions.R	Error can be entraced and correctly handled in outputs	full	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+evaluate	test-watchout.R	(crash)	both	a non-local jump out of the test leaves webR's evaluator
+forestplot	test_visual_with_Greg.R	(script)	both	needs Suggests package Greg, deliberately not in the test library (it pulls in 27 more packages)
+fs	test-file.R	file_touch / creates the file if it doesn't exist	both	not implemented by Emscripten's file system
+fs	test-file.R	file_touch / updates modification_time and access_time	both	not implemented by Emscripten's file system
+fs	test-id.R	group_ids() / returns the group ids	both	Emscripten's file system has no users or groups
+fs	test-id.R	user_ids() / returns the group ids	both	Emscripten's file system has no users or groups
+future	test-FutureBackend-factories.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-cluster,worker-termination.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+future	test-cluster-connection-clashes.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+future	test-cluster-missing-future-pkg.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+future	test-demo-fibonacci.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+future	test-futureCall.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-globals,resolve.R	(script)	full	needs a separate R process (callr/Rscript); webR has no processes
+future	test-globals,toolarge.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-globals,tricky.R	(script)	both	calls globalCallingHandlers(), which R refuses while calling handlers are on the stack, as they are under the test runner
+future	test-invalid-owner.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-makeClusterFuture-clusterEvalQ.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-makeClusterFuture.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+future	test-nbrOfWorkers.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-nested_futures,mc.cores.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-non-exportable,connections.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-plan.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-requestCore.R	(script)	both	forks (parallel::mcfork); webR has no fork()
+future	test-requestNode.R	(script)	full	needs a separate R process (callr/Rscript); webR has no processes
+future	test-sticky_globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-tweak.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-uuid.R	(script)	both	forks (parallel::mcfork); webR has no fork()
+future.apply	test-future_apply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+future.apply	test-future_lapply,globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future.apply	test-future_lapply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+future.apply	test-future_mapply,globals.R	(script)	both	objects serialise larger in webR than the test's size limit allows
+generics	test-docs.R	S4 and S3 packages can intermingle	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	S4 bullets print with no issues	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	generics methods can be reexported and extended	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	multiple methods are correctly itemized	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	multiple methods but same rdname are comma separated	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	multiple packages have multiple headers	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+generics	test-docs.R	single method is correctly itemized	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+ggdist	test.curve_interval.R	curve_interval works with lineribbon	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_dotsinterval.R	dot order is correct	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_interval.R	grouped intervals work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_interval.R	horizontal grouped intervals work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_lineribbon.R	geom_lineribbon with some NA ymin/ymax has correct draw order	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_lineribbon.R	one-group geom_lineribbons work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_lineribbon.R	one-group stat_lineribbons work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_lineribbon.R	stat_lineribbon draw order works	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_lineribbon.R	two-group stat_lineribbons work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_pointinterval.R	dist aesthetic can be NULLed out	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.geom_pointinterval.R	horizontal grouped pointintervals work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.scale_.R	mapping custom aesthetics works	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.scale_colour_ramp.R	basic color_ramp works	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.scale_colour_ramp.R	color_ramp works with stat_interval	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.scale_colour_ramp.R	fill_ramp works on lineribbons	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.stat_dist_slabinterval.R	stat fill aesthetic on halfeye works	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.stat_dist_slabinterval.R	stat_dist_ preserves existing grouping order	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggdist	test.stat_eye.R	dodged eye plots work	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggfortify	test-cluster.R	autoplot.silhouette works	full	needs Suggests package cluster, not in the test library
+ggfortify	test-cluster.R	fortify.silhouette works	full	needs Suggests package cluster, not in the test library
+ggfortify	test-stats-lm.R	autoplot.lm works for binomial	full	fails natively too with ggfortify 0.4.24 (binomial residuals differ from the test's expectation)
+ggfortify	test-stats.R	autoplot.lfda works for iris	full	needs Suggests package lfda, not in the test library
+ggfortify	test-stats.R	fortify.lfda works for iris	full	needs Suggests package lfda, not in the test library
+ggplot2	test-coord_sf.R	coord_sf() can use function breaks and n.breaks	full	needs Suggests package sf, not in the test library
+ggplot2	test-geom-label.R	geom_label handles line parameters and colours	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggplot2	test-guide-legend.R	legend.key.justification works as intended	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggplot2	test-guides.R	get_guide_data retrieves keys from exotic coords	full	needs Suggests package sf, not in the test library
+ggplot2	test-guides.R	guides are positioned correctly	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggplot2	test-prohibited-functions.R	list up R files properly	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+ggplot2	test-theme.R	legends are placed correctly when using stretchy spacing	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggridges	test_geom_vridgeline.R	visual appearance of geom_vridgeline	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggridges	test_theme_ridges.R	theme_ridges draws correctly	full	vdiffr SVG snapshot: vdiffr's SVG device measures text far too wide in webR (it has no system fonts for its metrics)
+ggthemes	test-shape-font.R	a known device family is named in the warning	both	webR's canvas device does not report font families or glyph coverage
+ggthemes	test-shape-font.R	an unknown device family is described, not printed as empty	both	webR's canvas device does not report font families or glyph coverage
+ggthemes	test-shape-font.R	the font is probed once per family and character set	both	webR's canvas device does not report font families or glyph coverage
+ggthemes	test-shape-font.R	the suggested device call names a real argument	both	webR's canvas device does not report font families or glyph coverage
+ggthemes	test-shape-font.R	the warning points at both ways out	both	webR's canvas device does not report font families or glyph coverage
+ggthemes	test-shape-font.R	uncovered glyphs are named in the warning	both	webR's canvas device does not report font families or glyph coverage
+gt	test-as_gtable.R	gt_tbls can be rendered as a gtable	both	gt 0.11.1 is incompatible with the pinned vctrs 0.7.3 (list_sizes() refuses a 1-D list array)
+gt	test-as_latex.R	Table styles correctly applied for longtable	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+gt	test-as_latex.R	Table styles correctly applied for tabular*	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+gt	test-l_fmt_engineering.R	fmt_engineering() works correctly in the LaTeX context	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+inline	test_cfunction.R	(file)	both	calls system(); unsupported under Emscripten
+inline	test_cxxfunction.R	(file)	both	calls system(); unsupported under Emscripten
+inline	test_utilities.R	(file)	both	calls system(); unsupported under Emscripten
+jsonlite	test-network-Github.R	*	both	flaky: queries the GitHub API, which throttles unauthenticated requests, so some of these fail in some runs
+jsonlite	test-serializeJSON-S4.R	Serializing S4 extending SEXPTYPE	both	an S4 object extending a basic type round-trips with different attributes in webR
+loo	test_loo_and_waic.R	loo with cores=1 and cores=2 gives same results	full	forks (parallel::mcfork); webR has no fork()
+loo	test_loo_and_waic.R	loo.array runs with multiple cores	full	forks (parallel::mcfork); webR has no fork()
+loo	test_loo_and_waic.R	loo.function runs with multiple cores	full	forks (parallel::mcfork); webR has no fork()
+loo	test_loo_moment_matching.R	(crash)	full	a one-item parallel::mclapply() calls mcaffinity(), which needs sched_getaffinity(): webR lacks it and R aborts (the app replaces mcaffinity(); the runner does not)
+loo	test_loo_subsampling_approximations.R	elpd_loo_approximation with multiple cores	both	forks (parallel::mcfork); webR has no fork()
+loo	test_relative_eff.R	relative_eff with multiple cores runs	full	forks (parallel::mcfork); webR has no fork()
+metafor	test_analysis_example_dersimonian2007.r	results are correct for the CLASP example.	full	needs Suggests package CompQuadForm, not in the test library
+metafor	test_analysis_example_jackson2014.r	confint() gives correct results for example 1 in Jackson et al. (2014).	full	needs Suggests package CompQuadForm, not in the test library
+metafor	test_analysis_example_jackson2014.r	confint() gives correct results for example 2 in Jackson et al. (2014).	full	needs Suggests package CompQuadForm, not in the test library
+metafor	test_analysis_example_konstantopoulos2011.r	profiling works for the three-level random-effects model (multilevel parameterization).	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_konstantopoulos2011.r	profiling works for the three-level random-effects model (multivariate parameterization).	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_miller1978.r	back-transformations work as intended for individual studies and the model estimate.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_raudenbush1985.r	results are correct for the mixed-effects model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_raudenbush1985.r	results are correct for the random-effects model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_rothman2008.r	results are correct for Mantel-Haenszel method.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_analysis_example_stijnen2010.r	results for the conditional logistic model with exact likelihood are correct (measure=='OR')	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_analysis_example_vanhouwelingen1993.r	results of the equal-effects conditional logistic model are correct.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_analysis_example_vanhouwelingen1993.r	results of the random-effects conditional logistic model are correct.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_analysis_example_vanhouwelingen1993.r	the log likelihood plot can be created.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_analysis_example_vanhouwelingen2002.r	L'Abbe plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_vanhouwelingen2002.r	forest plot of observed log(OR)s and corresponding BLUPs can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_vanhouwelingen2002.r	profile plot for tau^2 can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_viechtbauer2007a.r	CI is correct for the non-parametric bootstrap method.	full	fails natively too with metafor 5.2-1 (bootstrap CI differs from the stored values)
+metafor	test_analysis_example_viechtbauer2007a.r	CI is correct for the profile likelihood method.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_viechtbauer2007b.r	results are correct for the mixed-effects model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_analysis_example_yusuf1985.r	log likelihood plot can be drawn.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_misc_fsn.r	confint() gives correct results for the 'interview data' in Becker (2005).	full	fsn(type = "General", exact = TRUE) finds no fail-safe N in webR; native R finds it (not yet investigated)
+metafor	test_misc_funnel.r	funnel() works correctly.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_plot_rma.r	plot can be drawn for rma().	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_plot_rma.r	plot can be drawn for rma.mh().	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_plot_rma.r	plot can be drawn for rma.peto().	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_reporter.r	reporter() works correctly for 'rma.uni' objects.	full	needs pandoc, which webR lacks
+metafor	test_misc_rma_glmm.r	rma.glmm() works correctly for 'CM.EL' model.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_misc_rma_glmm.r	rma.glmm() works correctly for 'UM.FS' model.	full	needs Suggests package GLMMadaptive, not in the test library
+metafor	test_misc_rma_glmm.r	rma.glmm() works correctly for 'UM.RS' model.	full	needs Suggests package GLMMadaptive, not in the test library
+metafor	test_misc_rma_glmm.r	rma.glmm() works correctly when using 'clogit' or 'clogistic'.	full	needs Suggests package BiasedUrn, not in the test library
+metafor	test_misc_rma_ls.r	location-scale model works correctly for a continuous predictor	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_rma_ls.r	location-scale model works correctly for multiple predictors	full	needs Suggests package dfoptim, not in the test library
+metafor	test_misc_rma_ls.r	permutation tests work correctly for a location-scale model	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_rma_ls.r	profile() and confint() work correctly for location-scale models	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_rma_mv.r	rma.mv() works correctly with different optimizers	full	needs Suggests package dfoptim, not in the test library
+metafor	test_misc_selmodel.r	results are correct for a step function model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_selmodel.r	results are correct for a truncated distribution model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_selmodel.r	results are correct for the beta function model.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_selmodel.r	results are correct for the various exponential function models.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_misc_setlab.r	.setlab() works correctly together with forest().	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_baujat_plot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_caterpillar_plot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_contour-enhanced_funnel_plot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_cumulative_forest_plot.r	plot can be drawn for 'rma.mh' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_cumulative_forest_plot.r	plot can be drawn for 'rma.peto' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_cumulative_forest_plot.r	plot can be drawn for 'rma.uni' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_predstyle.r	plot can be drawn with predstyle='b'.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_predstyle.r	plot can be drawn with predstyle='d' and transf=exp.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_predstyle.r	plot can be drawn with predstyle='d'.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_predstyle.r	plot can be drawn with predstyle='l'.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_predstyle.r	plot can be drawn with predstyle='s'.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_forest_plot_with_subgroups.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_funnel_plot_variations.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_funnel_plot_with_trim_and_fill.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_gosh.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_labbe_plot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_llplot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_meta-analytic_scatterplot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_normal_qq_plots.r	plot can be drawn for 'rma.mh' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_normal_qq_plots.r	plot can be drawn for 'rma.peto' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_normal_qq_plots.r	plot can be drawn for 'rma.uni' object.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_plot_of_cumulative_results.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_plot_of_influence_diagnostics.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_radial_plot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_plots_regplot.r	plot can be drawn.	full	compares plots with reference images in tests/testthat/images, which the CRAN tarball does not ship
+metafor	test_tips_model_selection_with_glmulti_and_mumin.r	results are correct for package glmulti.	full	needs Suggests package glmulti, not in the test library
+metafor	test_tips_multiple_imputation_with_mice.r	results are correct for package Amelia.	full	needs Suggests package Amelia, not in the test library
+metafor	test_tips_multiple_imputation_with_mice.r	results are correct for package mice.	full	needs Suggests package mice, not in the test library
+metafor	test_tips_testing_factors_lincoms.r	results are correct when testing all pairwise comparisons.	both	needs Suggests package car, deliberately not in the test library (it pulls in 24 more packages); the file's first test stops at require(car) before it attaches multcomp
+metafor	test_tips_testing_factors_lincoms.r	results are correct when testing factors.	both	needs Suggests package car, deliberately not in the test library (it pulls in 24 more packages)
+metafor	test_tips_testing_factors_lincoms.r	results are correct when testing linear combinations.	both	needs Suggests package car, deliberately not in the test library (it pulls in 24 more packages)
+mmrm	test-interop-car.R	car emits a message about mmrm registration on load	full	needs Suggests package car, not in the test library
+mmrm	test-skipping.R	get_compiler works as expected	both	calls system(); unsupported under Emscripten
+mmrm	test-skipping.R	is_using_clang gives the same information as R_compiled_by in recent R versions	both	calls system(); unsupported under Emscripten
+mmrm	test-skipping.R	is_using_clang works as expected	both	calls system(); unsupported under Emscripten
+OncoBayes2	test-blrm_exnex.R	blrm_exnex exits gracefully with an error message when Stan does not sample with rstan	full	stanliWebR rejects the test's deliberately misspelled control entry (aBapt_delta) up front with its own message; under rstan sampling fails and OncoBayes2 says 'Calling Stan failed.'
+otel	test-api-dev.R	dev API is up to date	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
+otel	test-defaults.R	setup_default_logger_provider	full	needs Suggests package otelsdk, not in the test library
+otel	test-defaults.R	setup_default_meter_provider	full	needs Suggests package otelsdk, not in the test library
+otel	test-defaults.R	setup_default_tracer_provider	full	needs Suggests package otelsdk, not in the test library
+otel	test-formatting.R	code formatting	full	needs the air formatter, an external program
+otel	test-rtrace.R	integration test	full	needs a C toolchain to install source packages
+otel	test-spelling.R	spelling	full	needs Suggests package spelling, not in the test library
+otel	test-tracer-name.R	default_tracer_name	full	needs Suggests package otelsdk, not in the test library
+parallelly	test-as.cluster.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-autoStopCluster.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-availableCores.R	(script)	both	webR reports no CPU cores or load average
+parallelly	test-cgroups.R	(script)	both	calls system(); unsupported under Emscripten
+parallelly	test-cloneNode.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-freeCores.R	(script)	both	webR reports no CPU cores or load average
+parallelly	test-freePort.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+parallelly	test-isForkedChild.R	(script)	both	forks (parallel::mcfork); webR has no fork()
+parallelly	test-isLocalhostNode.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-isNodeAlive.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-killNode.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-makeClusterPSOCK.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-makeNodePSOCK.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+parallelly	test-registerClusterTypes.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+pbapply	tests.R	(script)	both	needs a listening socket (parallel clusters); webR has none
+pillar	test-format_survival.R	survival output	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+pkgbuild	build-tools.R	(script)	both	needs a C toolchain to install source packages
+pkgbuild	test-archives.R	pkg_has_src	both	calls system(); unsupported under Emscripten
+pkgbuild	test-archives.R	pkg_has_src on non-package files	full	calls system(); unsupported under Emscripten
+pkgbuild	test-build-process.R	binary builds return correct filenames	full	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build-process.R	can build package without src without compiler	full	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build-process.R	can get output, exit status, etc.	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build-process.R	can kill a build process	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build-process.R	source builds return correct filenames	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	binary builds return correct filenames	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	bootstrap.R can output stdout, stderr, and warnings when run	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	bootstrap.R does not run if Config/build/bootstrap is not TRUE	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	bootstrap.R runs on build if present	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	can build package without src without compiler	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	package tarball binary build	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	package tarball binary build errors	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	source builds return correct filenames	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build.R	warnings can be turned into errors	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-build_tools.R	tests always run in environment with dev tools	both	no C compiler or build tools in webR
+pkgbuild	test-compile_dll.R	can compile a DLL and clean up afterwards	both	needs a C toolchain to install source packages
+pkgbuild	test-compiler.R	has_compiler / succeeds if a compiler exists	both	no C compiler or build tools in webR
+pkgbuild	test-exclude.R	copy_package_tree creates package dir	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-exclude.R	cp error on Unix	full	needs subprocesses (processx); webR has no processes
+pkgbuild	test-exclude.R	exclusions	both	needs subprocesses (processx); webR has no processes
+pkgbuild	test-withr.R	withr_with_makevars	full	needs subprocesses (processx); webR has no processes
+pkgconfig	test-api.R	We can create a custom API	full	needs Suggests package disposables, not in the test library
+pkgconfig	test-globalenv.R	Global env does not bother packages	full	needs Suggests package disposables, not in the test library
+pkgconfig	tests.R	Cannot get if set by another package	full	needs Suggests package disposables, not in the test library
+pkgconfig	tests.R	Composite values	full	needs Suggests package disposables, not in the test library
+pkgconfig	tests.R	Session variables	full	needs Suggests package disposables, not in the test library
+pkgconfig	tests.R	Setting from .onLoad works fine	full	needs Suggests package disposables, not in the test library
+pkgconfig	tests.R	Two packages do not interfere	full	needs Suggests package disposables, not in the test library
+pkgload	test-data.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-depend.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-description.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-dll.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-examples.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-extraction.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-help.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-imports.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-load-collate.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-load-hooks.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-load.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-metadata.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-namespace-env.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-namespace.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-package.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-po.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-s4-export.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-s4-sort.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-s4-unload.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-shim.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	test-source.R	(crash)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+pkgload	wipe.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+plyr	test-rbind.r	rbind.fill performance linear	full	times rbind.fill() with system.time(); webR reports user and system CPU time as 0, so the timing regression's p-value is NaN
+plyr	test-rbind.r	rbind.fill performance linear with factors	full	times rbind.fill() with system.time(); webR reports user and system CPU time as 0, so the timing regression's p-value is NaN
+plyr	test-rbind.r	rbind.fill performance linear with times	full	times rbind.fill() with system.time(); webR reports user and system CPU time as 0, so the timing regression's p-value is NaN
+posterior	test-summarise_draws.R	multicore summarise_draws is identical to single-core summarise_draws including if some chunks contain no variables	both	forks (parallel::mcfork); webR has no fork()
+processx	test-assertions.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-chr-io.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-cleanup.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-client-lib.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-connections.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-env.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-err-output.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-errors.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-extra-connections.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-fifo.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-io.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-kill-tree.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-pipeline.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll-connections.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll-curl.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll-stress.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll2.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-poll3.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-print.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-process.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-ps-methods.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-pty.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-run.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-set-std.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-sigchld.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-standalone-errors.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-stdin.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-stress.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-unix-sockets.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-utf8.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-utils.R	(crash)	both	needs Suggests package webfakes, not in the test library
+processx	test-wait.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-cleanup-reporter.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-common.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-connections.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-disk.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-finished.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-kill-tree.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-linux.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-macos.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-pid-reuse.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-posix-zombie.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-posix.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-ps.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-system.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-utils.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-wait-inotify.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-wait.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-windows.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-winver.R	(crash)	both	needs Suggests package webfakes, not in the test library
+ps	test-z-string.R	(crash)	both	needs Suggests package webfakes, not in the test library
+purrr	test-map.R	can enforce .ptype	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+purrr	test-map.R	requires output be length 1 and have common type	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+QuickJSR	test_io_wrappers.R	(file)	both	calls system(); unsupported under Emscripten
+QuickJSR	test_os_exec_fork_safety.R	(file)	both	calls system(); unsupported under Emscripten
+QuickJSR	test_stdio_file_safety.R	(file)	both	calls system(); unsupported under Emscripten
+RBesT	test-gMAP-s2z.R	a degenerate intercept prior is rejected rather than silently wrong	full	stanli raises the model's transformed-data reject() as an R error, with the expected message; rstan prints it, and the test captures the printed message
+rbmi	test-analyse.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
+rbmi	test-draws.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
+rbmi	test-expand.R	fill_locf - works with data.frames & Dates	full	needs Suggests package lubridate, not in the test library
+rbmi	test-parallel.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
+RcppParallel	doRUnit.R	(script)	both	needs threads (TBB/tinythread); webR has none
+reactable	test-reactable.R	data supports Crosstalk	full	needs Suggests package crosstalk, not in the test library
+reactable	test-reactable.R	static rendering	both	calls system(); unsupported under Emscripten
+readr	test-read-file.R	read_file works via https	full	needs network access
+readr	test-read-file.R	read_file works via https on gz file	full	needs network access
+readr	test-read-fwf.R	read_table can read from a pipe (552)	both	reads from a pipe(); webR has no processes
+readr	test-read-table.R	read_table can read from a pipe (552)	both	reads from a pipe(); webR has no processes
+rlang	test-c-api.R	(crash)	both	a C function called through a mismatched pointer type: allowed natively, a trap in wasm
+rlang	test-cnd-abort.R	`show.error.messages` is respected by `abort()` (#1630)	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-abort.R	abort() displays call in error prefix	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-abort.R	can chain errors at top-level (#1405)	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-abort.R	empty backtraces are not printed	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-abort.R	error is printed with backtrace	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-abort.R	parent errors are not displayed in error message and backtrace	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-entrace.R	`options(error = entrace)` strips error prefix	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-entrace.R	can set `entrace()` as a global handler	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-entrace.R	entrace() doesn't embed backtraces twice	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-entrace.R	entrace() preserves exit status in non-interactive sessions (#1052, rstudio/bookdown#920)	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-entrace.R	rlang and base errors are properly entraced	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-handlers.R	drop_global_handlers() works and is idempotent	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-signal.R	`inform()` behaves consistently in interactive and non-interactive sessions (#1037)	both	calls system(); unsupported under Emscripten
+rlang	test-cnd-signal.R	`warning.length` is increased (#1211)	both	calls system(); unsupported under Emscripten
+rlang	test-cnd.R	can use conditionMessage() method in subclasses of rlang errors	both	calls system(); unsupported under Emscripten
+rlang	test-deparse.R	infix operators are labelled (#956, r-lib/testthat#1432)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+rlang	test-session.R	is_installed() works with pkgload-loaded packages	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
+rlang	test-stack.R	current_call(), caller_call() and frame_call() work	both	the runner evaluates tests inside webR's evalR(), so the global environment has a calling frame
+rmarkdown	test-formats.R	css arg works HTML based format	both	needs pandoc, which webR lacks
+rmarkdown	test-formats.R	documents with spaces in names can be rendered	both	needs pandoc, which webR lacks
+rmarkdown	test-formats.R	formats successfully produce a document	both	needs pandoc, which webR lacks
+rmarkdown	test-formats.R	pdf_document can correctly keep tex file if required	both	needs pandoc, which webR lacks
+rmarkdown	test-formats.R	url in css arg works HTML based format	full	needs pandoc, which webR lacks
+rmarkdown	test-github_document.R	github_document produces atx-header	full	needs pandoc, which webR lacks
+rmarkdown	test-ioslides.R	ioslides presentation embeds logo	both	needs pandoc, which webR lacks
+rmarkdown	test-ioslides.R	ioslides presentation is styled	both	needs pandoc, which webR lacks
+rmarkdown	test-ioslides.R	test_ioslides_presentation	both	needs pandoc, which webR lacks
+rmarkdown	test-md_document.R	md_document() can preserve yaml	full	needs pandoc, which webR lacks
+rmarkdown	test-notebook.R	a custom output_source can be used on render	both	needs pandoc, which webR lacks
+rmarkdown	test-notebook.R	an example R Notebook document can be rendered and parsed	both	needs pandoc, which webR lacks
+rmarkdown	test-render.R	Metadata is available before pre_knit	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	PDF-specific resources are discovered	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	R Markdown resource discovery finds expected resources	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	R Markdown resource discovery finds expected scss and css when bslib is used	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	R Markdown resource discovery finds expected scss when sass is used	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	Vanilla Markdown resource discovery finds expected resources	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	bare relative directory references are ignored	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	dependencies in .R files are recursively discovered	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	empty quoted strings don't confuse resource discovery	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	filenames with shell characters can use relative resource paths	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	implicitly discovered directories are ignored	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	knitr child are correctly discovered as resources from chunk options	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	multiple resources in the includes option can be discovered	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	resource_files use cases all work	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	resources are discovered in CSS files	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	resources are discovered in notebook files	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	resources not deleted when filenames contain shell characters	both	needs pandoc, which webR lacks
+rmarkdown	test-resources.R	resources not deleted when intermediates_dir is same as input	both	needs pandoc, which webR lacks
+rmarkdown	test-site.R	clean_site gives notices before removing	both	needs pandoc, which webR lacks
+rmarkdown	test-site.R	render_site respects 'new_session' in the config	both	needs pandoc, which webR lacks
+rmarkdown	test-site.R	render_site works	both	needs pandoc, which webR lacks
+rmarkdown	test-spin.R	default metadata are included if no metadata is provided	both	needs pandoc, which webR lacks
+rmarkdown	test-spin.R	included YAML metadata are respected	both	needs pandoc, which webR lacks
+rstantools	test-rstan_config.R	(file)	both	needs Suggests package usethis, not in the test library
+rstantools	test-rstan_create_package.R	(file)	both	needs Suggests package usethis, not in the test library
+S7	test-external-generic.R	new_method works with both hard and soft dependencies	both	needs a C toolchain to install source packages
+sass	test-font-objects.R	font_google(local = TRUE) basically works	full	needs network access
+stanli	test-cstanfit.R	serialized CmdStan-style methods load without either Stan frontend or runtime	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-ecosystem-registration.R	optional generics dispatch with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-fast-math.R	fast_math is off by default and opt-in per model	both	stanli's wasm runtime is built without threads
+stanli	test-posterior-ecosystem.R	saved fits retain the workflow in a fresh R session	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-rfit.R	native fit methods never load RStan or require a model runtime	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-stanfit-live.R	a fresh session restores subclass draws and reports a missing handle	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-stanfit-registration.R	a conflicting stanfit class does not prevent native APIs from loading	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-stanfit-registration.R	optional S4 methods register with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-stanfit.R	serialized model-dependent calls fail safely without a live handle	both	needs a separate R process (callr/Rscript); webR has no processes
+stringr	test-sub.R	bad vectorisation gives informative error	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tibble	test-vignette-digits.R	digits vignette	full	needs a separate R process (callr/Rscript); webR has no processes
+tibble	test-vignette-extending.R	extending vignette	full	needs a separate R process (callr/Rscript); webR has no processes
+tibble	test-vignette-invariants.R	invariants vignette	full	needs a separate R process (callr/Rscript); webR has no processes
+tibble	test-vignette-numbers.R	numbers vignette	full	needs a separate R process (callr/Rscript); webR has no processes
+tibble	test-vignette-tibble.R	tibble vignette	full	needs a separate R process (callr/Rscript); webR has no processes
+tidyr	test-expand.R	crossing checks for bad inputs	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyr	test-expand.R	grid_dots() reject non-vector input	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyr	test-hoist.R	can't hoist() from a data frame column	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyr	test-hoist.R	non-vectors generate a cast error if a ptype is supplied	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyr	test-unnest.R	bad inputs generate errors	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyselect	test-eval-select.R	eval_select() produces correct backtraces	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+tidyselect	test-vars-pull.R	vars_pull() produces correct backtraces	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+utf8	test-utf8_format.R	'format' can handle long text in C locale	both	webR always runs in a UTF-8 locale, so the C-locale formatting is never used
+utf8	test-utf8_format.R	'format' can handle marks in C locale	both	webR always runs in a UTF-8 locale, so the C-locale formatting is never used
+utf8	test-utf8_format.R	'format' can handle zero chars	both	webR always runs in a UTF-8 locale, so the C-locale formatting is never used
+vctrs	test-assert.R	assertion failures are explained	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-cast.R	cast errors create helpful messages (#57, #225)	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-conditions.R	lossy cast from character to factor mentions loss of generality	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-conditions.R	ordered cast failures mention conversion	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-error-call.R	base S3 casts report correct error call	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-shape.R	factor casts support shape	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-type-asis.R	AsIs objects throw cast errors with their underlying types	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vctrs	test-type-data-frame.R	data frames print nicely	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
+vroom	test-connection.R	reading no data, from a connection	full	needs network access
+vroom	test-path.R	read_file works via https	full	needs network access
+vroom	test-path.R	vroom works via https on bz2 file	full	needs network access
+vroom	test-path.R	vroom works via https on concatenated gz file	full	needs network access
+vroom	test-path.R	vroom works via https on gz file	full	needs network access
+vroom	test-path.R	vroom works via https on xz file	full	needs network access
+vroom	test-path.R	vroom works via https on zip file	full	needs network access
+withr	test-collate.R	with_collate() and with_locale() set LC_COLLATE envvar (#179)	both	needs a separate R process (callr/Rscript); webR has no processes
+withr	test-local_.R	works without withr attached	both	needs a separate R process (callr/Rscript); webR has no processes
+withr	test-standalone-defer.R	defer()'s global env facilities work	both	the deferred-event message differs from withr's stored snapshot in webR
+withr	test-standalone-defer.R	defered actions in global env are run on exit	both	needs a separate R process (callr/Rscript); webR has no processes
+xfun	test-all.R	(script)	both	calls system(); unsupported under Emscripten

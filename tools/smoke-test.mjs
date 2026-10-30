@@ -81,10 +81,40 @@ try {
     }, code);
 
   check('R evaluates', (await evalR('as.character(1 + 1)')) === '2');
+  // Matrix is rebuilt with a CHOLMOD fix (tools/wasm-patches): upstream's wasm build
+  // returns empty results here, as webR's size_t is 32 bits.
+  const cholmod = await evalR(`local({
+    m <- Matrix::Matrix(c(0, 0, 2:0), 3, 5)
+    R <- methods::as(m, "RsparseMatrix")
+    A <- methods::as(Matrix::Matrix(c(4, 1, 0, 1, 3, 1, 0, 1, 2), 3, 3, sparse = TRUE), "symmetricMatrix")
+    L <- Matrix::Cholesky(A, LDL = FALSE, perm = FALSE)
+    paste(sum(Matrix::crossprod(R)), sum(Matrix::tcrossprod(R)), length(Matrix::solve(L, system = "L")@x))
+  })`);
+  check('Matrix: crossprod() of an RsparseMatrix and solve(system = "L") are not empty', cholmod === '27 23 6',
+    `got ${cholmod}, want 27 23 6`);
+  // vroom and sass are rebuilt with webR fixes too (tools/wasm-patches). Without them
+  // readr::read_csv() fails for want of a thread, and a Sass error aborts R.
+  const csv = await evalR(`tryCatch({
+    f <- tempfile(fileext = ".csv")
+    readr::write_csv(data.frame(x = 1:3, y = c(2, 4, 6)), f)
+    as.character(sum(readr::read_csv(f, show_col_types = FALSE)$y))
+  }, error = function(e) conditionMessage(e))`);
+  check('readr::read_csv() reads a file (vroom without threads)', csv === '12', `got ${csv}, want 12`);
+  const sassError = await evalR(`tryCatch(as.character(sass::sass("a { b: 1px + 2em; }")),
+    error = function(e) if (grepl("Incompatible units", conditionMessage(e))) "R error" else conditionMessage(e))`);
+  check('a Sass error is an R error (libsass with wasm exceptions)', sassError === 'R error', `got ${sassError}`);
+  // pack-library.R strips static archives from lib/ but must keep these run-time files.
+  const libFiles = await evalR(`paste(file.exists(
+    system.file("lib", "bs5", "scss", "_functions.scss", package = "bslib"),
+    system.file("lib", "3.6.0", "jquery-3.6.0.min.js", package = "jquerylib")), collapse = " ")`);
+  check('bslib keeps its Sass sources and jquerylib its jQuery', libFiles === 'TRUE TRUE', `got ${libFiles}`);
   const shown = await page.evaluate(() => document.getElementById('about-version').textContent);
   check('About shows the package.json version', shown === PACKAGE_VERSION, `shown=${shown} package.json=${PACKAGE_VERSION}`);
   check('mclapply(mc.cores > 1) runs on one core',
     (await evalR('paste(unlist(suppressMessages(parallel::mclapply(1:3, identity, mc.cores = 4))), collapse = ",")')) === '1,2,3');
+  // One item takes mclapply()'s mcaffinity() path, which aborted R before the shim.
+  check('mclapply() over one item does not abort R',
+    (await evalR('paste(unlist(suppressMessages(parallel::mclapply(7, identity, mc.cores = 2))))')) === '7');
 
   // Proves the image mounted and a cross-compiled .so dlopens with the TBB stubs.
   const fitClass = await page.evaluate(
@@ -149,6 +179,7 @@ async function checkPanes(page, evalR) {
 
   await showPane('console');
   await checkConsoleInput(page, evalR);
+  await checkCompletion(page, evalR, { settle });
 
   await run('smoke_x <- 1:3');
   await showPane('side');
@@ -239,6 +270,14 @@ async function checkWorkers(page, evalR, { run, showPane, settle }) {
     paste(identical(v, 1:4), el < 5, round(el, 1))
   `);
   check('mirai_map() runs on two workers in parallel', timing.startsWith('TRUE TRUE'), `elapsed=${timing}`);
+  const chains = await evalR(`
+    library(stanliWebR)
+    smoke_sm <- rstan::stan_model(model_code = "parameters { real mu; } model { mu ~ normal(0, 1); }")
+    smoke_seq <- rstan::sampling(smoke_sm, chains = 2, iter = 400, seed = 3, refresh = 0, cores = 1)
+    smoke_par <- suppressMessages(rstan::sampling(smoke_sm, chains = 2, iter = 400, seed = 3, refresh = 0, cores = 2))
+    as.character(identical(as.array(smoke_seq), as.array(smoke_par)))
+  `);
+  check('chains on workers are identical to a sequential fit', chains === 'TRUE', chains);
   await page.evaluate(() => window.__app.terminal.enqueue(
     'smoke_m <- mirai_map(1:4, function(i) { t0 <- proc.time()[[3]]; while (proc.time()[[3]] - t0 < 60) NULL; i }); smoke_v <- smoke_m[]'
   ));
@@ -585,6 +624,94 @@ async function checkConsoleInput(page, evalR) {
   await page.waitForFunction(() => !window.__app.terminal.busy, null, { timeout: UI_TIMEOUT_MS });
   check('multi-line paste runs every line',
     (await evalR('as.character(exists("smoke_p1") && exists("smoke_p2"))')) === 'TRUE');
+}
+
+/**
+ * Tab completion from R in the console and the editor and, on a phone, what keyboard
+ * suggestions do to the console line: a word replaced in place, not fragments re-sent.
+ */
+async function checkCompletion(page, evalR, { settle }) {
+  const idle = () => page.waitForFunction(() => !window.__app.terminal.busy, null, { timeout: UI_TIMEOUT_MS });
+  const line = () => page.evaluate(() => window.__app.terminal.line);
+  const clear = () => page.evaluate(() => window.__app.terminal.replaceLine(''));
+  await evalR('smoke_completion_unique <- 1; smoke_cmp_a <- 1; smoke_cmp_b <- 2; "ok"');
+  await page.click('#tab-console');
+
+  await page.keyboard.type('smoke_completion_u');
+  await page.keyboard.press('Tab');
+  check('console: Tab completes a unique name',
+    await settle(() => window.__app.terminal.line === 'smoke_completion_unique'), await line());
+  await clear();
+
+  await page.keyboard.type('smoke_cmp_');
+  await page.keyboard.press('Tab');
+  const listed = await settle(() => window.__app.terminal.popup.isOpen && window.__app.terminal.popup.items.length === 2);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const picked = await line();
+  check('console: Tab lists candidates, ↓ Enter picks without running',
+    listed && picked === 'smoke_cmp_b' && !(await page.evaluate(() => window.__app.terminal.busy)), `line=${picked}`);
+  await clear();
+
+  await page.keyboard.type('lm(form');
+  await page.keyboard.press('Tab');
+  await settle(() => window.__app.terminal.popup.isOpen);
+  await page.keyboard.press('Tab');
+  check('console: an argument completes as "name = "', (await line()) === 'lm(formula = ', await line());
+  await clear();
+
+  const editorDone = await page.evaluate(async () => {
+    const e = window.__app.editor;
+    e.open('/home/web_user/smoke_completion.R', 'x <- smoke_completion_u');
+    e.cm.setCursor({ line: 0, ch: 23 });
+    await e.requestCompletion();
+    const text = e.cm.getLine(0);
+    e.close('/home/web_user/smoke_completion.R');
+    return text;
+  });
+  check('editor: completion from the live session', editorDone === 'x <- smoke_completion_unique', editorDone);
+  await page.click('#tab-console');
+
+  if (!deviceName) return;
+
+  // Chrome drops a device's touch emulation after some idle time, and the page then
+  // matches (pointer: fine) and turns mirroring off, as it should for a real mouse.
+  // A phone never does that, so put the emulation back for the checks that need it.
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await settle(() => matchMedia('(pointer: coarse)').matches && window.__app.terminal.mirror);
+  await page.click('#tab-console');
+
+  check('phone: console input is mirrored', await page.evaluate(() => window.__app.terminal.mirror));
+  check('phone: key row shows while typing in the console',
+    await settle(() => document.querySelector('.key-row[data-target="console"]')?.offsetParent != null));
+
+  // Gboard's sequence: a composition per word, then a tapped suggestion that swaps the
+  // misspelt word for a longer one, cursor ending mid-line.
+  const typed = await page.evaluate(() => {
+    const t = window.__app.terminal;
+    const ta = t.term.textarea;
+    const edit = (value, at, inputType) => {
+      ta.value = value;
+      ta.setSelectionRange(at, at);
+      ta.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, data: null }));
+    };
+    ta.focus();
+    edit('smoke_ime <- toupr("ab")', 24, 'insertText');
+    ta.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    edit('smoke_ime <- toupper("ab")', 20, 'insertCompositionText');
+    ta.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'toupper' }));
+    return { line: t.line, cursor: t.cursor };
+  });
+  check('phone: a keyboard suggestion replaces the word in place',
+    typed.line === 'smoke_ime <- toupper("ab")' && typed.cursor === 20, JSON.stringify(typed));
+  await page.keyboard.press('Enter');
+  await idle();
+  check('phone: the corrected line reaches R', (await evalR('smoke_ime')) === 'AB');
+
+  await page.click('.key-row[data-target="console"] button[data-key="ArrowUp"]');
+  check('phone: key row ↑ recalls history', (await line()) === 'smoke_ime <- toupper("ab")', await line());
+  await clear();
 }
 
 if (failures.length) {

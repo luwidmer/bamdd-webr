@@ -1,6 +1,6 @@
 Package: stanliWebR
 Title: Sample brms and rbmi Models with stanli in WebAssembly
-Version: 0.7.0
+Version: 0.8.1
 Authors@R: c(person("Lukas", "Widmer", email = "lukas_andreas.widmer@novartis.com",
                     role = c("aut", "cre")),
              person("Novartis", "Pharma AG", role = "cph"))
@@ -27,6 +27,8 @@ BugReports: https://github.com/luwidmer/bamdd-webr/issues
 Encoding: UTF-8
 Depends: R (>= 4.4)
 Imports: fs, jinjar, methods, stats, tools, utils
-Suggests: brms, miraiWebR, OncoBayes2, rbmi, RBesT, rstan, stanli (>= 0.21.0)
+Suggests: brms, miraiWebR, OncoBayes2, rbmi, RBesT, rstan, stanli (>= 0.25.0),
+    testthat (>= 3.0.0), withr
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.1
+Config/testthat/edition: 3
