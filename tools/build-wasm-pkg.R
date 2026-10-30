@@ -145,9 +145,15 @@ pins <- if (nzchar(pins_env)) {
 } else {
   list()
 }
-install_linking_to(tarball, pins)
+stan <- nzchar(Sys.getenv("WASM_PKG_STAN"))
+# A Stan package compiles against the image's own Stan toolchain -- the rstan,
+# StanHeaders and RcppParallel (oneTBB) that rstan and StanHeaders are cross-compiled
+# from, and that webr-tbb-stubs.cpp matches -- so its LinkingTo is not pinned. Pinning
+# swapped in the library's RcppParallel 5.1.11-2 (TBB 2019, a TBB-less stub at run
+# time), which left the host rstan unloadable for rstan_config().
+if (!stan) install_linking_to(tarball, pins)
 
-if (nzchar(Sys.getenv("WASM_PKG_STAN"))) tarball <- prepare_stan_source(tarball, stub)
+if (stan) tarball <- prepare_stan_source(tarball, stub)
 
 # The image's webR tree is built without flang, yet rwasm's webr-vars.mk links every
 # package against FLIBS = $(FORTRAN_WASM_LDADD), the flang runtime archive named in
