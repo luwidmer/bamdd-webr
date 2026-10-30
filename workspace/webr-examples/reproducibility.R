@@ -7,8 +7,9 @@
 # Those recorded hashes are the stronger claim. Everything here runs on one
 # WebAssembly build of R and of the Stan interpreter, single-threaded, and wasm
 # floating point is deterministic, so any browser on any system should produce the
-# same bytes. Verified so far in Chrome and Edge on macOS; if your browser or system
-# disagrees, the script stops and says which part differs.
+# same bytes. Verified so far in Chrome and Edge on macOS and in Playwright's Chromium
+# on Linux; if your browser or system disagrees, the script stops and says which part
+# differs.
 #
 # The hashes belong to the package versions printed below. Upgrading R, stanli,
 # stanliWebR, brms or rbmi is expected to change them; re-run this script and copy the
@@ -134,7 +135,7 @@ expected <- c(
   rnorm  = "f7ab8b90c877d416",
   stanli = "a4dfe4de2ebc7af2",
   brms   = "e87fd58366178dd9",
-  rbmi   = "aaf3cd0e2b738136"
+  rbmi   = "0f8909106c87d728"
 )
 
 got <- vapply(results, fingerprint, character(1))
