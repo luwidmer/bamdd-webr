@@ -25,10 +25,9 @@
 #' them. Anything else stops with an error rather than being ignored.
 #'
 #' With `cores` > 1 and webR workers started by `miraiWebR::daemons()`, each
-#' chain is sampled on a worker of its own. The first chain is then the same as
-#' in a sequential run; the others use different seeds, so the fit is
-#' reproducible but not identical to a sequential one. Without workers the chains
-#' run one after another, and a message says so.
+#' chain is sampled on a worker of its own, with the same random stream it has in
+#' a sequential run, so the fit is identical to the sequential one. Without
+#' workers the chains run one after another, and a message says so.
 #'
 #' @return `TRUE`, invisibly.
 #' @export
@@ -96,7 +95,7 @@ stanli_fit_model <- function(model, sdata, algorithm, iter, warmup, thin, chains
     )
     out@sim <- list()
     out@mode <- 2L
-    return(with_live_model(out))
+    return(out)
   }
   init <- rstan_init(init, chains)
   if (silent < 2) {
@@ -113,13 +112,5 @@ stanli_fit_model <- function(model, sdata, algorithm, iter, warmup, thin, chains
     metric = control$metric, step_size = control$stepsize,
     adapt_engaged = control$adapt_engaged
   )
-  with_live_model(repair_stanfit(out))
-}
-
-# brms looks for a compiled model by its C++ name before it evaluates the log
-# density (loo_moment_match(), bridge_sampler()), and would otherwise recompile
-# with rstan. stanli's stanfit carries the live model, so name it.
-with_live_model <- function(fit) {
-  fit@stanmodel@model_cpp <- list(model_cppname = "stanli", model_cppcode = "")
-  fit
+  repair_stanfit(out)
 }

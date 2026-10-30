@@ -22,10 +22,15 @@ happen whenever either package is loaded.
 \details{
 Only the one \code{rstan::sampling()} call in \code{gMAP()} and in \code{blrm_exnex()} is
 replaced. rstan's sampling arguments are honoured where stanli has an
-equivalent, including the starting step size \code{control$stepsize}. OncoBayes2's
-program has one statement stanli cannot
-compile -- a function that can \code{reject()}, used to size data -- so that guard
-is dropped; an empty input still fails, with Stan's own index error.
+equivalent, including the starting step size \code{control$stepsize}. Both
+programs run on stanli as they are.
+
+Should stanli be unable to compute a model's transformed parameters and
+generated quantities (as stanli 0.24.0 was for OncoBayes2's combination
+models), the package's compiled rstan model samples it instead, rather than
+returning draws without them. In webR that model cannot run once stanli is
+loaded, so there it is an error that says to restart R and sample without
+stanliWebR.
 }
 \examples{
 \dontrun{

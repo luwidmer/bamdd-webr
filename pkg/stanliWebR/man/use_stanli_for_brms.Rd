@@ -35,10 +35,9 @@ non-negative radius, or a list of starting values, applied as rstan applies
 them. Anything else stops with an error rather than being ignored.
 
 With \code{cores} > 1 and webR workers started by \code{miraiWebR::daemons()}, each
-chain is sampled on a worker of its own. The first chain is then the same as
-in a sequential run; the others use different seeds, so the fit is
-reproducible but not identical to a sequential one. Without workers the chains
-run one after another, and a message says so.
+chain is sampled on a worker of its own, with the same random stream it has in
+a sequential run, so the fit is identical to the sequential one. Without
+workers the chains run one after another, and a message says so.
 }
 \examples{
 \dontrun{

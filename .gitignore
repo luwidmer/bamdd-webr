@@ -25,6 +25,9 @@ dist/
 # Dev-only tooling for tools/smoke-test.mjs
 node_modules/
 
+# webR's synchronous-XHR shim under Node (tools/test-packages.mjs) leaves these behind
+.node-xmlhttprequest-*
+
 # wrangler's local state (tools/deploy.sh)
 .wrangler/
 

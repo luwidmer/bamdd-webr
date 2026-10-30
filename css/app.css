@@ -607,3 +607,50 @@ span.tab { cursor: default; }
   white-space: pre-wrap;
 }
 #about-dialog form { text-align: right; }
+
+/* ---------- completion (js/complete.js) ---------- */
+
+.completion-popup {
+  position: fixed;
+  z-index: 30;
+  min-width: 140px;
+  max-width: min(360px, 90vw);
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 0;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / .2);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.completion-item {
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.completion-item.arg { color: var(--accent); }
+.completion-item:hover { background: var(--row-hover); }
+.completion-item.selected { background: var(--row-active); }
+
+/* ---------- phone key row ---------- */
+
+/* Keys a phone keyboard lacks, shown while the console or editor has the keyboard. */
+.key-row { display: none; }
+@media (pointer: coarse) {
+  .completion-popup { max-height: 40vh; font-size: 14px; }
+  .completion-item { padding: 6px 12px; }
+  .pane.typing .key-row {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-head);
+  }
+  .key-row button { flex: 1; min-width: 0; padding: 0; font-size: 15px; }
+}

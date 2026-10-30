@@ -11,10 +11,9 @@
 #' effective-sample-size check and HMC diagnostics then run on that object
 #' unchanged.
 #'
-#' rbmi's two Stan helper functions are rewritten with `for` loops, which stanli
-#' accepts; the posterior is unchanged. Starting values follow rstan: the MMRM
-#' estimates rbmi supplies are used for every name that is a Stan parameter, and
-#' the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
+#' rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
+#' MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
+#' and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
 #'
 #' @return `TRUE`, invisibly.
 #' @export
@@ -32,27 +31,8 @@ use_stanli_for_rbmi <- function() {
   ))
 }
 
-# rbmi's two Stan helper functions walk their input with a while loop and a mutable
-# integer index. stanli rejects that ("integer ... is not known at compile time"),
-# so swap in for-loop equivalents before the template is rendered.
-stanli_helper_functions <- c(
-  "    int integer_division(int a, int b) {",
-  "        return a %/% b;",
-  "    }",
-  "",
-  "    array[] vector to_vector_of_arrays(vector vec, int length_array) {",
-  "        int n = num_elements(vec) %/% length_array;",
-  "        array[n] vector[length_array] res;",
-  "        for (i in 1:n) {",
-  "            res[i] = vec[((i - 1) * length_array + 1):(i * length_array)];",
-  "        }",
-  "        return res;",
-  "    }",
-  ""
-)
-
-# As rbmi's own get_stan_model(), minus ensure_rstan() and the compile: it returns
-# the Stan program, which stanli parses when it samples.
+# As rbmi's own get_stan_model(), minus ensure_rstan(), the cache and the compile: it
+# returns the Stan program, which stanli builds when it samples.
 stanli_get_stan_model <- function(covariance, prior_cov) {
   cov_prior_template <- jinjar::parse_template(fs::path(
     find_stan_file(paste0(covariance, "_", prior_cov, ".stan"), subdir = "covariance_priors")
@@ -62,17 +42,8 @@ stanli_get_stan_model <- function(covariance, prior_cov) {
     machine_double_eps = .Machine$double.eps
   )
   cov_prior_blocks <- lapply(as_stan_fragments(cov_prior_string), paste, collapse = "\n")
-
-  source_lines <- readLines(find_stan_file("MMRM.stan"))
-  marker <- grep("{{ functions }}", source_lines, fixed = TRUE)
-  if (!identical(trimws(source_lines[1]), "functions {") || length(marker) != 1L) {
-    stop("MMRM.stan no longer opens with a single functions block; the stanli patch is stale")
-  }
   model_template <- jinjar::parse_template(
-    paste(
-      c("functions {", stanli_helper_functions, source_lines[marker:length(source_lines)]),
-      collapse = "\n"
-    ),
+    fs::path(find_stan_file("MMRM.stan")),
     .config = jinjar::jinjar_config(trim_blocks = TRUE, lstrip_blocks = TRUE)
   )
   do.call(jinjar::render, c(
@@ -135,11 +106,11 @@ stanli_fit_mcmc <- function(designmat, outcome, group, subjid, visit, method, qu
     max_depth = 10,
     refresh = if (quiet) 0 else control$refresh,
     # rbmi asks rstan for these two only.
-    pars = c("beta", "Sigma")
+    pars = c("beta", "Sigma"),
+    # rbmi checks for the class by name, which stanli's subclass does not pass; rbmi
+    # needs nothing that the subclass adds.
+    plain = TRUE
   )
-  # rbmi checks for the class by name, which stanli's subclass does not pass; rbmi
-  # needs nothing that the subclass adds.
-  class(fit) <- structure("stanfit", package = "rstan")
 
   check_mcmc(fit, method$n_samples)
   list(samples = extract_draws(fit, method$n_samples), fit = fit)

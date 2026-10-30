@@ -8,7 +8,8 @@
 #     else is ABI-matched to, built by RBesT's harness (github.com/Novartis/RBesT,
 #     tools/webr/docker). See "Rebuilding rstan and StanHeaders" in README.md.
 #   * build/wasm-extra -- anything built by tools/build-wasm-pkg.sh: RBesT and
-#     OncoBayes2 from their CRAN releases, jinjar; and stanliWebR and miraiWebR from
+#     OncoBayes2 from their CRAN releases, jinjar, sass, vroom, Matrix with a CHOLMOD
+#     fix, TMB, and mmrm compiled against it; and stanliWebR and miraiWebR from
 #     pkg/, built by tools/build-first-party.R.
 #
 #   Rscript tools/vendor-wasm-repo.R [path/to/BesT/contrib/4.6]

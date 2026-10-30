@@ -30,6 +30,7 @@ files, packages, plots, viewer and help.
 | `RBesT` (`gMAP`, `automixfit`, `ess`, decision/OC functions) | cross-compiled here; with `library(stanliWebR)`, sampled by stanli; see below |
 | `OncoBayes2` (`blrm_exnex`, `blrm_trial`) | cross-compiled here; with `library(stanliWebR)`, sampled by stanli; see below |
 | `mmrm`, and `rbmi` imputation built on it | in the library; no dedicated example |
+| Meta-analysis: `bayesmeta` (Bayesian random effects), `metafor` (classical) | in the library once the next `wasm-repo.yml` bundle is merged; no dedicated example |
 | `rbmi::method_bayes()`, sampled by stanli | `webr-examples/rbmi-bayes-stanli.R`; needs `library(stanliWebR)`, see below |
 | Installing further packages at runtime | `install.packages()`; see "Installing more packages" |
 | Compiling a *new* Stan program with rstan (`rstan::stan_model()`, `rstan::stan()`) | with `library(stanliWebR)`, kept as code and sampled by stanli via `sampling()`; see below |
@@ -66,6 +67,16 @@ Output instead of leaving the console.
 * **Ctrl/Cmd+Enter** runs the whole statement under the cursor (a multi-line call, a
   pipe chain, an `if`/`else` block), worked out from the editor's own R tokens so it
   still queues while R is busy.
+* **Tab completion** in the console and the editor (also Ctrl+Space there) comes from
+  R's own completion engine, as in the R console: objects of the live session,
+  function arguments, `$` and `@` members, `pkg::` exports, file paths inside strings
+  and package names in `library()`. One match is inserted; several open a list
+  (↑/↓, Tab or Enter to pick, Esc to close, or tap). Tab at the start of a line still
+  indents. Like R's console, completing after `x$` evaluates `x`.
+* **Phone keyboards:** with a touch screen the console line is mirrored into the
+  keyboard's text field, so suggestions, autocorrect, swipe typing and dictation edit
+  it in place. A key row (Tab, ↑ ↓ ← →, Esc) above the keyboard gives the console
+  history and completion, and the same keys in the editor.
 * **Debugging:** at a `Browse[n]>` prompt the console header shows Next, Step into,
   Finish, Continue and Quit (RStudio's keys: F10, Shift+F4, Shift+F6, Shift+F5,
   Shift+F8), and for sourced files the current line is highlighted. The **Traceback**
@@ -108,21 +119,22 @@ fit <- brm(time ~ age * sex, data = kidney)   # default backend, sampled by stan
   `max_treedepth`, `stepsize`, `metric` (`"diag_e"`, `"dense_e"` or `"unit_e"`) and
   `adapt_engaged`, and anything else stops with an error rather than being ignored.
 * **rbmi:** `get_stan_model()` only renders the program, and `fit_mcmc()` samples it
-  with stanli. rbmi's own draw extraction and diagnostics then run unchanged. rbmi's
-  Stan helper functions walk their input with a `while` loop and a mutable index,
-  which stanli rejects, so they are swapped for `for`-loop equivalents.
+  with stanli. rbmi's own draw extraction and diagnostics then run unchanged, on
+  rbmi's Stan program as it ships.
 * **RBesT and OncoBayes2:** these ship precompiled models and work without
   stanliWebR (see "Where rstan comes from"). With it, the one `rstan::sampling()`
   call in `gMAP()` and in `blrm_exnex()` runs the same Stan program on stanli instead,
   which is much faster here: `gMAP()` on `AS` takes 3 s instead of 26 s, and
-  OncoBayes2's single-agent example 8 s instead of 34 s. OncoBayes2's program needs two
-  rewrites stanli can run, neither changing the model: `sort_asc()`, which stanli does
-  not implement, becomes a Stan function, and a `reject()` guard inside a function that
-  sizes data is dropped (an empty input still fails, with Stan's index error).
-  Their `control` settings, including the starting step size, reach stanli as they
-  would reach rstan.
+  OncoBayes2's single-agent example 8 s instead of 34 s. Both programs run as they
+  ship. Their `control` settings, including the starting step size, reach stanli as they
+  would reach rstan. Should stanli ever build a model without its transformed
+  parameters and generated quantities (stanli 0.24.0 did for OncoBayes2's combination
+  models), stanliWebR refuses it rather than return draws without them. Outside webR
+  it then samples the package's compiled model with rstan; in webR that model cannot
+  run once stanli is loaded (all wasm modules share one symbol table, and it crashes),
+  so the error asks you to restart R without `library(stanliWebR)`.
 * **rstan:** `stan_model()` checks the Stan program and keeps it instead of compiling
-  it, returning a `stanli_stanmodel`, a subclass of rstan's `stanmodel`; `sampling()`
+  it, returning a `stanliWebR_stanmodel`, a subclass of rstan's `stanmodel`; `sampling()`
   on it, and so `stan()`, runs the program on stanli and returns a `stanfit`, with the
   same arguments as above. Compiler options are ignored, and the ones that need C++
   (`allow_undefined`, `standalone_functions`, `use_opencl`) stop with an error.
@@ -130,13 +142,15 @@ fit <- brm(time ~ age * sex, data = kidney)   # default backend, sampled by stan
 Starting values, seeds and the caller's random stream behave as with rstan:
 `"random"`, `"0"` and lists of starting values are honoured (unnamed parameters start
 uniform on (-2, 2), unconstrained), and a given `seed` gives bit-identical draws.
-stanli also draws from R's own generator, so stanliWebR seeds it from `seed` and puts
-the caller's state back afterwards.
+Neither stanli nor stanliWebR draws from R's own generator, so the caller's random
+stream is left as it was. With `cores` > 1 and webR workers running, each chain runs
+on a worker with the random stream it has in a sequential run, so the parallel fit is
+identical to the sequential one.
 
 `options(stanliWebR.fast_math = TRUE)` builds every model in stanli's fast mode (fused
 multiply-add, less exactly rounded arithmetic). It is off by default: the draws then
 differ from a default run with the same seed, and the reproducibility fingerprints no
-longer match. stanliWebR needs stanli 0.21.0 or later and says so if it finds an
+longer match. stanliWebR needs stanli 0.25.0 or later and says so if it finds an
 older one.
 
 `brm(backend = "stanli")` is not a brms backend; plain `brm()` is the way.
@@ -187,14 +201,15 @@ future::plan(miraiWebR::webr_workers)         # future, future.apply, furrr, ...
   and **Shut down workers** (as `daemons(0)`; the next `mirai()` says so).
 * **MCMC chains:** with workers running, `brm(cores = )`, `rstan::sampling(cores = )`
   (and so RBesT and OncoBayes2, which default to `getOption("mc.cores")`) sample each
-  chain on a worker of its own. Chain 1 equals the sequential run's chain 1; the others
-  use seeds derived from `seed`, so a parallel fit is reproducible, but not identical to
-  `cores = 1`. Asking for cores without workers runs the chains in sequence and says so.
+  chain on a worker of its own, with the random stream it has in a sequential run, so a
+  parallel fit is identical to `cores = 1`. Asking for cores without workers runs the chains in sequence and says so.
   The epilepsy model in `webr-examples/parallel.R`, 4 chains: 31 s in sequence, 16 s on two
   workers, 8 s on four (warm).
 * **No fork:** webR cannot fork, so `parallel::mclapply()`, `mcmapply()` and `pvec()`
   run on one core whatever `mc.cores` says, and say so once per session. That keeps
   `options(mc.cores = 4)`, set for the chains, from breaking `loo()` and the like.
+  `parallel::mcaffinity()` reports no affinity: its C code needs `sched_getaffinity()`,
+  which webR lacks, and `mclapply()` over a single item called it and aborted R.
 * **future:** `plan(miraiWebR::webr_workers)` uses running workers, or starts as many
   as the device allows and stops them when the plan changes.
 * **Limits:** each worker is a whole R heap, so there are at most four, and one core is
@@ -243,17 +258,23 @@ interpreted by stanli instead (see stanliWebR above).
 
 Needs R (for the build scripts only), `bash` and `curl`.
 
-**No build outputs are committed.** `vendor/` is ignored in full, so the seven wasm
-packages that have no usable upstream build are absent and `build-library.R` fails
-loudly until they are rebuilt. Every input is public: RBesT, OncoBayes2, rstan,
-StanHeaders and jinjar are all on CRAN; `tools/build-wasm-pkg.sh` cross-compiles RBesT,
-OncoBayes2 and jinjar, the build harness of
+**No build outputs are committed.** `vendor/` is ignored in full, so the twelve wasm
+packages built here are absent and `build-library.R` fails loudly until they are
+rebuilt. Every input is public: RBesT, OncoBayes2, rstan, StanHeaders, jinjar, sass,
+vroom, mmrm, Matrix and TMB are all on CRAN; `tools/build-wasm-pkg.sh` cross-compiles RBesT,
+OncoBayes2, jinjar, the CRAN releases of sass, vroom and mmrm (upstream wasm
+builds of those three exist only as unreleased development versions; sass and vroom
+with the webR fixes rwasm applies upstream, from `tools/wasm-patches/`: libsass with
+wasm exceptions, vroom without threads), Matrix with
+a fix to its vendored CHOLMOD (`tools/wasm-patches/`; upstream's wasm build returns
+empty `crossprod()` results for an `RsparseMatrix`), and TMB, whose upstream build
+(1.9.11) is too old to compile mmrm against, the build harness of
 [`Novartis/RBesT`](https://github.com/Novartis/RBesT) (`tools/webr/docker`, cloned at
 `vendor/BesT`) cross-compiles rstan and StanHeaders and supplies the Emscripten image
 `build-wasm-pkg.sh` uses, and stanliWebR and miraiWebR are in `pkg/` here. Rebuilding
 everything needs Docker; only the first-party packages, which are pure R, do not.
 
-Without Docker, download the seven as the bundle published by `wasm-repo.yml` and pinned
+Without Docker, download the twelve as the bundle published by `wasm-repo.yml` and pinned
 in `lib/WASM_REPO`; [DEPLOY.md](DEPLOY.md) ("The wasm package bundle") explains how it is
 built and verified. This works once a bundle has been published, i.e. once
 `lib/WASM_REPO` no longer says `PENDING`:
@@ -263,13 +284,14 @@ git clone https://github.com/luwidmer/bamdd-webr.git && cd bamdd-webr
 Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscripten
 bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
-bash    tools/fetch-wasm-repo.sh     # the seven above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
+bash    tools/fetch-wasm-repo.sh     # the twelve above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
 Rscript tools/build-library.R        # 142 wasm packages -> build/library (~286 MB)
 Rscript tools/pack-library.R         # -> lib/library.tar.gz (~138 MB)
 ```
 
-To build the seven yourself instead, skip `fetch-wasm-repo.sh` and follow the three
-"Rebuilding ..." sections below, then `Rscript tools/vendor-wasm-repo.R`.
+To build the twelve yourself instead, skip `fetch-wasm-repo.sh` and follow the three
+"Rebuilding ..." sections below and "Cross-compiling any other package" for the CRAN
+ones, then `Rscript tools/vendor-wasm-repo.R`.
 
 [BOM.md](BOM.md) lists every component the build pulls in, with versions and licences.
 
@@ -346,6 +368,21 @@ does not compile. `tools/wasm-patches/jinjar_0.3.2.patch` is the two-line upstre
 ([nlohmann/json#3082](https://github.com/nlohmann/json/pull/3082), released in v3.10.4),
 applied automatically when the versions match.
 
+The other CRAN packages `wasm-repo.yml` builds this way, in its order:
+
+```sh
+tools/build-wasm-pkg.sh jinjar 0.3.2
+tools/build-wasm-pkg.sh sass 0.4.10    # applies tools/wasm-patches/sass_0.4.10.patch
+tools/build-wasm-pkg.sh vroom 1.7.1    # applies tools/wasm-patches/vroom_1.7.1.patch
+tools/build-wasm-pkg.sh Matrix 1.7-6   # applies tools/wasm-patches/Matrix_1.7-6.patch
+tools/build-wasm-pkg.sh TMB 1.9.25     # links to Matrix
+tools/build-wasm-pkg.sh mmrm 0.3.19    # compiles against TMB's headers
+```
+
+The order matters for LinkingTo: the script installs each LinkingTo package in the
+image at the version already in `build/wasm-extra`, else at the one `lib/MANIFEST.tsv`
+pins, so mmrm compiles against the TMB the library will carry.
+
 Two environment variables:
 
 * `WASM_PKG_DEPS` — rwasm's `dependencies`, `FALSE` by default, so only the named
@@ -353,7 +390,9 @@ Two environment variables:
   `build-library.R` resolves the manifest, and building the closure here only fails for
   everything that needs a Fortran toolchain (`mvtnorm`, `quadprog`, `statmod`, and
   `RcppEigen`, which wants a `libFortranRuntime.a` the image does not have). Set `NA`
-  to build the closure anyway.
+  to build the closure anyway. A C or C++ package that merely links `$(FLIBS)` (Matrix,
+  TMB) needs no Fortran runtime, so the script drops it from the link when the image
+  lacks it; BLAS and LAPACK resolve against webR's own.
 * `WASM_PKG_STAN=1` — prepare an rstantools package first. Such a package cannot be
   cross-compiled as it comes from CRAN: `configure` runs `rstantools::rstan_config()`,
   and the `src/Makevars` it generates asks the *host* `RcppParallel` for link flags,
@@ -368,6 +407,84 @@ Two environment variables:
   put the TBB flags back.
 
 Then serve it (see below) and open <http://127.0.0.1:8080>.
+
+### Testing the packages
+
+Once the library is built, every package's own tests can be run against it, in webR:
+
+```sh
+npm run test-packages                 # all 142, in CRAN mode (what CRAN runs)
+npm run test-packages:full            # NOT_CRAN=true: the slow suites too
+node tools/test-packages.mjs --package brms,rbmi --jobs 2 --timeout 1800
+npm run test-browser -- http://127.0.0.1:8080   # tests that need webR workers
+```
+
+* **Inputs are pinned.** `tools/fetch-test-inputs.R` (run by the npm scripts) downloads
+  what `lib/TEST-MANIFEST.tsv` pins and checks each sha256: the test frameworks
+  (testthat, RUnit, tinytest, testit), the few suggested packages that tests need
+  (`TEST_SUGGESTS` in the script: mnormt, patrick, metafor's lighter Suggests, whoami,
+  maps, eha, vdiffr and shiny; car and Greg are left out, each pulls in some 25 more
+  packages, and usethis has no wasm closure), and their dependencies the image
+  lacks, all as wasm builds; and the source of every package at exactly its version in
+  `lib/MANIFEST.tsv` -- installed wasm packages do not carry their tests. The test
+  packages go into `build/test-library`, never into the deployed image. After a library change,
+  `Rscript tools/fetch-test-inputs.R --resolve` rewrites the manifest; it refuses to run
+  frozen against a `lib/MANIFEST.tsv` it does not match.
+* **Each package gets a fresh webR**, under Node, with the library mounted and
+  stanliWebR loaded, so model fits in the tests run on stanli as they do for users.
+  testthat and tinytest suites are reported test by test, after attaching whatever the
+  package's `tests/testthat.R` attaches (bit64 needs patrick); other `tests/*.R` scripts run
+  as `R CMD check` runs them, each in its own R, and fail on an error (their `.Rout.save`
+  transcripts are not compared: webR formats some numbers differently). miraiWebR is
+  given a worker pool that offers no workers, which tests its console fallback;
+  `test-browser.mjs` runs its worker tests, and stanliWebR's parallel-chains test, in
+  the application itself.
+* **The gate is strict.** The run fails on any failure or error that
+  `lib/TEST-SKIPS.tsv` does not list; on a package that cannot be tested at all (no
+  published source, a version that differs from its tests -- including a first-party
+  package in `pkg/` that has moved ahead of the bundle -- a crash, a timeout); on a
+  listed entry that no longer fails, so the list cannot go stale (except entries whose
+  reason starts `flaky:`, for tests that fail in some runs only, such as those that
+  query a rate-limited web API); and on any entry whose reason is still `TODO`. Each entry names a package, a test file and a test (`*` for
+  all), the depth it applies to (`cran`, `full` or `both`) and why it is accepted --
+  usually something webR cannot do: `system()`, processes, sockets, a C++ toolchain, or
+  a suggested package with no wasm build. `--record-skips` appends every current failure
+  with reason `TODO`, to start a list that then has to be reviewed entry by entry.
+* **What the list says about the image.** Most entries are things webR cannot do. A
+  few are findings worth knowing: webR limits recursion depth (see "The recursion
+  limit" below); repo.r-wasm.org's Matrix 1.7-6 returns empty
+  `crossprod()` results for an `RsparseMatrix` (a CHOLMOD bug on 32-bit `size_t`, which
+  the bundle's own Matrix build fixes); `system.time()` reports user and system CPU time
+  as 0; vdiffr's SVG device measures text far too wide, so visual snapshots differ;
+  metafor's `fsn(type = "General", exact = TRUE)` finds no fail-safe N where native R
+  does; and gt 0.11.1 does not work with the pinned vctrs in one place. At `--full`
+  depth most further entries are the same limits, suggested packages the test library
+  leaves out, snapshots recorded against other dependency versions, and tests that need
+  the package's source tree or reference images the CRAN tarball does not ship.
+* **Results** go to `build/test-results/`: `results.json`, a JUnit file per package for
+  CI, and each package's console output in `logs/`.
+
+### The recursion limit
+
+webR runs R with `options(expressions = 400)`; native R allows 5000. Code that recurses
+deeply stops with "evaluation nested too deeply", which is why 42 package tests are on
+the skip list (pkgload, generics, rlang, cli, gt, dplyr's `pick()` inside a function,
+brms with very long group-level terms, future).
+
+The limit protects two stacks, and neither can simply be enlarged:
+
+* **Emscripten's linear-memory stack**, 1 MiB, fixed when webR is built.
+* **The browser's own stack for webR's worker**, which no page can change. In Chrome,
+  recursion through `do.call()`, `lapply()`, `Recall()` or `mapply()` overflows it at a
+  limit of 450-600, so 400 is already close.
+
+The skipped tests need a limit of 500-1000, so raising it would trade a clear R error
+for a crash. It is left as is.
+
+One known gap: deep S3 dispatch (`UseMethod()`) uses about 11 KiB of linear-memory stack
+per level, ten times plain recursion, and at the limit of 400 runs past the end of that
+stack before R stops it. R's own stack check (`R_CStackLimit`) would stop it cleanly but
+is off in webR; switching it on is a candidate fix, not applied yet.
 
 ## Running
 
@@ -461,7 +578,7 @@ breaks a pinned sha256, and `--frozen` then fails loudly. That is correct behavi
 it means the real reproducible artifacts are the downloaded tarballs, which
 `wasm-repo.yml` publishes as the `-packages.tar` asset of the pinned Release
 (`fetch-wasm-repo.sh` unpacks them into `vendor/pkgcache/`), and the built
-`lib/library.tar.gz`. The seven in `vendor/wasm-repo/` are not committed, so they have
+`lib/library.tar.gz`. The twelve in `vendor/wasm-repo/` are not committed, so they have
 to be fetched or rebuilt before a `--frozen` run can succeed; `build-library.R` names
 the missing file and the script to run.
 
@@ -476,7 +593,9 @@ js/library.js         fetches the library image once and mounts it in every R
 js/workers.js         background webR workers for miraiWebR
 js/layout.js          desktop / phone mode and the visible pane on a phone
 js/split.js           drag-to-resize gutters
-js/terminal.js        xterm.js terminal; queued editor lines are echoed at the R prompt
+js/terminal.js        xterm.js terminal; queued editor lines are echoed at the R prompt;
+                      touch keyboards edit a mirrored line, not xterm's own input
+js/complete.js        the Tab completion list shared by console and editor
 js/editor.js          CodeMirror 5 (v6 is excluded: it needs a bundler); also data tabs
 js/theme.js           Auto/Light/Dark; CSS follows the OS, this handles the override
 js/plots.js           canvasNewPage / canvasImage message handling
@@ -502,11 +621,16 @@ tools/deploy.sh            manual Cloudflare deploy (Pages + R2)
 tools/check-cors.sh        checks the image's CORS header from each site origin
 tools/smoke-test.mjs       Playwright check: isolation, mount, a real gMAP() fit, the
                            panes; --device "Pixel 7" checks the phone layout
+tools/fetch-test-inputs.R  pinned test frameworks and package sources for the tests below
+tools/test-packages.mjs    runs every package's tests in webR under Node (with test-packages.R)
+tools/test-browser.mjs     runs the worker-dependent first-party tests in the application
 _headers              COOP/COEP for Cloudflare Pages; mirrors serve.py / serve.R
 lib/MANIFEST.tsv      the pinned package set (committed)
 lib/WASM_REPO         release pin for the cross-compiled packages (committed)
+lib/TEST-MANIFEST.tsv pinned inputs of the package tests (committed)
+lib/TEST-SKIPS.tsv    reviewed test failures the package tests accept (committed)
 vendor/wasm-repo/     local wasm repo: RBesT, OncoBayes2, rstan, StanHeaders, jinjar,
-                      stanliWebR, miraiWebR (not committed -- rebuild, then
+                      sass, vroom, mmrm, Matrix, TMB, stanliWebR, miraiWebR (not committed -- rebuild, then
                       vendor-wasm-repo.R)
 workspace/            the R home directory as the session starts: copied in at startup
 workspace/bamdd_leiden2026_exercises.R  bamdd workshop exercises (converted)

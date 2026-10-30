@@ -27,33 +27,30 @@ rstan_init <- function(init, chains) {
     stop("init has ", length(per_chain), " sets of starting values for ", chains,
          " chains", call. = FALSE)
   }
-  function(model) {
+  function(model, seed) {
     n <- model$n_unconstrained
-    t(vapply(per_chain, function(values) unconstrained_init(model, values), numeric(n)))
+    t(vapply(seq_along(per_chain), function(k) {
+      unconstrained_init(model, per_chain[[k]], seed = seed, chain = k)
+    }, numeric(n)))
   }
 }
 
 # As Stan's own initialisation: up to 100 attempts, each drawing the unspecified
 # parameters afresh, until the log density and its gradient are finite. The last
-# failure is reported if none succeeds.
-unconstrained_init <- function(model, values, tries = 100L) {
-  # rstan ignores names that are not parameters, where stanli refuses them; and
-  # stanli lists a model's parameters only through its internals.
-  declared <- unique(sub("\\..*$", "", .Call("stanli_r_parameter_columns", model$ptr,
-                                             PACKAGE = "stanli")))
-  values <- lapply(values[intersect(names(values), declared)], stan_array)
+# failure is reported if none succeeds. The draws come from the run's seed, not
+# from R's random stream, as stanli's own rstan sampling() makes them.
+unconstrained_init <- function(model, values, seed, chain, tries = 100L) {
   # With every parameter given there is nothing to draw afresh.
-  if (all(declared %in% names(values))) {
+  if (all(stanli::parameter_names(model) %in% names(values))) {
     tries <- 1L
   }
   failure <- NULL
   for (attempt in seq_len(tries)) {
-    u <- if (length(values)) {
-      # Draws the parameters not given uniform on (-2, 2), unconstrained.
-      tryCatch(stanli::unconstrain(model, values, partial = TRUE), error = function(e) e)
-    } else {
-      stats::runif(model$n_unconstrained, -2, 2)
-    }
+    draw_seed <- as.integer((seed + 1000003 * (chain - 1) + attempt - 1) %% .Machine$integer.max)
+    u <- tryCatch(
+      stanli::unconstrain(model, values, partial = TRUE, seed = draw_seed, ignore_unknown = TRUE),
+      error = function(e) e
+    )
     if (inherits(u, "error")) {
       failure <- conditionMessage(u)
       next
@@ -65,18 +62,4 @@ unconstrained_init <- function(model, values, tries = 100L) {
     failure <- "the log density or its gradient is not finite"
   }
   stop("No usable starting values in ", tries, " attempt(s): ", failure, call. = FALSE)
-}
-
-# stanli takes an array of vectors or matrices as one R array, outermost index
-# first, where rstan also accepts a list of them.
-stan_array <- function(value) {
-  if (!is.list(value)) {
-    return(value)
-  }
-  a <- simplify2array(lapply(value, stan_array), higher = TRUE)
-  if (is.list(a)) {
-    stop("starting values given as a list must all have the same shape", call. = FALSE)
-  }
-  d <- dim(a)
-  if (is.null(d)) a else aperm(a, c(length(d), seq_len(length(d) - 1L)))
 }

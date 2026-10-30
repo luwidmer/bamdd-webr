@@ -7,39 +7,35 @@
 # function of the stanli model returning a chains x n_unconstrained matrix.
 #
 # With `cores` > 1, more than one chain and webR workers running (miraiWebR's
-# daemons()), each chain is sampled on a worker of its own. Chain 1 then matches
-# the sequential run exactly; the others draw from different, equally valid
-# streams, so a parallel fit is reproducible but not identical to a sequential one.
+# daemons()), each chain is sampled on a worker of its own. Chain k uses stanli's
+# stream for (seed, chain k), so a parallel fit is identical to a sequential one.
 #
 # `pars` and `include` select the parameters kept, as rstan's do; lp__ is always
 # kept. `metric`, `step_size` and `adapt_engaged` go to stanli only when given.
+# `plain = TRUE` returns an object of class exactly "stanfit", without the model.
+#
+# Neither stanli nor this function draws from R's random stream.
 sample_stanfit <- function(code, data, chains, warmup, samples, thin, seed, init,
                            delta, max_depth, refresh, threads = 1L,
                            save_warmup = FALSE, cores = 1L, pars = NULL,
                            include = TRUE, metric = NULL, step_size = NULL,
-                           adapt_engaged = NULL) {
-  # stanli draws from R's generator as well as from its own seed, so a run is only
-  # reproducible with both set. rstan leaves the caller's random stream alone, and
-  # so does this: the generator's state is put back afterwards.
-  env <- globalenv()
-  old_seed <- env$.Random.seed
-  on.exit(if (is.null(old_seed)) rm(".Random.seed", envir = env) else env$.Random.seed <- old_seed)
-  set.seed(seed)
-  json <- stan_json(data)
+                           adapt_engaged = NULL, plain = FALSE) {
   fast_math <- fast_math_option()
-  model <- stanli::stanli_model(code = code, data = json, seed = seed, fast_math = fast_math)
-  init <- if (is.function(init)) init(model) else init
+  data <- stan_data(data)
+  model <- stanli_model_complete(code = code, data = data, seed = seed, fast_math = fast_math)
+  init <- if (is.function(init)) init(model, seed) else init
   exclude <- excluded_pars(model, pars, include)
   controls <- Filter(Negate(is.null), list(
     metric = metric, step_size = step_size, adapt_engaged = adapt_engaged
   ))
   if (use_workers(chains, cores)) {
-    return(record_controls(sample_on_workers(
-      model, code = code, json = json, chains = chains, seed = seed, init = init,
+    fit <- sample_on_workers(
+      model, code = code, data = data, chains = chains, seed = seed, init = init,
       warmup = warmup, samples = samples, thin = thin, delta = delta,
       max_depth = max_depth, threads = threads, save_warmup = save_warmup,
-      exclude = exclude, fast_math = fast_math, controls = controls
-    ), controls))
+      fast_math = fast_math, controls = controls
+    )
+    return(stanli::as_stanfit(fit, exclude = exclude, plain = plain))
   }
   args <- c(list(
     model,
@@ -52,31 +48,44 @@ sample_stanfit <- function(code, data, chains, warmup, samples, thin, seed, init
   } else {
     args$init_radius <- init
   }
-  fit <- stanli::as_stanfit(do.call(stanli::sample_model, args), exclude = exclude)
-  record_controls(fit, controls)
+  stanli::as_stanfit(do.call(stanli::sample_model, args), exclude = exclude, plain = plain)
 }
 
-# stanli 0.21.0's as_stanfit() records only adapt_delta and max_treedepth, and
-# names the sampler NUTS(diag_e) whatever the metric; record them as rstan does.
-record_controls <- function(fit, controls) {
-  if (!length(controls)) {
-    return(fit)
+# rstan reads any list in the data as an array of its elements, while stanli
+# writes a list with names as a JSON object; rbmi names its per-group covariance
+# priors by group. Drop those names, at every depth.
+stan_data <- function(data) {
+  unname_lists <- function(x) {
+    if (!is.list(x) || is.data.frame(x)) return(x)
+    lapply(unname(x), unname_lists)
   }
-  extra <- Filter(Negate(is.null), list(
-    stepsize = controls$step_size, adapt_engaged = controls$adapt_engaged
-  ))
-  sampler_t <- paste0("NUTS(", controls$metric %||% "diag_e", ")")
-  update <- function(a) {
-    a$control <- utils::modifyList(a$control %||% list(), extra)
-    a$sampler_t <- sampler_t
-    a
-  }
-  fit@stan_args <- lapply(fit@stan_args, update)
-  fit@sim$samples <- lapply(fit@sim$samples, function(chain) {
-    attr(chain, "args") <- update(attr(chain, "args"))
-    chain
-  })
-  fit
+  if (!is.list(data)) return(data)
+  data[] <- lapply(data, unname_lists)
+  data
+}
+
+# stanli can build a model without its transformed parameters and generated
+# quantities -- when its interpreter fails on them too -- and then only warns, so the
+# fit would silently lack variables the caller's code looks for. stanli 0.24.0 did
+# this for OncoBayes2's combination models; 0.25.0 computes them. Kept as a guard:
+# refuse such a model; callers that have a compiled model to fall back on catch the
+# condition's class.
+stanli_model_complete <- function(...) {
+  withCallingHandlers(
+    stanli::stanli_model(...),
+    warning = function(w) {
+      msg <- conditionMessage(w)
+      if (grepl("generated quantities are unavailable", msg, fixed = TRUE)) {
+        stop(structure(class = c("stanliWebR_incomplete_model", "error", "condition"), list(
+          message = paste0(
+            "stanli cannot compute this model's transformed parameters and generated ",
+            "quantities, so its draws would lack them. stanli says:\n", msg
+          ),
+          call = NULL
+        )))
+      }
+    }
+  )
 }
 
 # options(stanliWebR.fast_math = TRUE): see ?stanliWebR.
@@ -124,21 +133,19 @@ use_workers <- function(chains, cores) {
 
 # One single-chain run per worker, put back together as if sampled at once. Each
 # worker builds the model from the same code, data and seed, so transformed data
-# are identical across chains; chain k samples with its own seed.
-sample_on_workers <- function(model, code, json, chains, seed, init, warmup, samples,
-                              thin, delta, max_depth, threads, save_warmup, exclude,
-                              fast_math, controls) {
-  # Chain 1 keeps the run's seed, so it is the sequential run's first chain.
-  seeds <- c(seed, sample.int(.Machine$integer.max, chains - 1L))
+# are identical across chains; chain k samples with chain_id = k.
+sample_on_workers <- function(model, code, data, chains, seed, init, warmup, samples,
+                              thin, delta, max_depth, threads, save_warmup, fast_math,
+                              controls) {
   workers <- miraiWebR::status()$connections
   message("Sampling ", chains, " chains on ", min(chains, workers), " webR workers")
   ms <- lapply(seq_len(chains), function(k) {
     miraiWebR::mirai(do.call(f, a), .args = list(f = sample_chain, a = list(
-      code = code, json = json, seed = seed, chain_seed = seeds[k],
+      code = code, data = data, seed = seed, chain_id = k,
       init = if (is.matrix(init)) init[k, , drop = FALSE] else init,
       warmup = warmup, samples = samples, thin = thin, delta = delta,
       max_depth = max_depth, threads = threads, save_warmup = save_warmup,
-      fast_math = fast_math, controls = controls, rng_kind = RNGkind()
+      fast_math = fast_math, controls = controls
     )))
   })
   # On any failure, or Stop, the other chains must not keep running.
@@ -152,20 +159,17 @@ sample_on_workers <- function(model, code, json, chains, seed, init, warmup, sam
     }
     fits[[k]] <- fit
   }
-  stanli::as_stanfit(bind_chains(fits, model, seed), exclude = exclude)
+  bind_chains(fits, model)
 }
 
-# Runs on a worker. R's generator is seeded as sample_stanfit() seeds it, with the
-# console's generator kind rather than the L'Ecuyer streams a worker task starts on.
-sample_chain <- function(code, json, seed, chain_seed, init, warmup, samples, thin,
-                         delta, max_depth, threads, save_warmup, fast_math, controls,
-                         rng_kind) {
-  set.seed(seed, kind = rng_kind[1], normal.kind = rng_kind[2], sample.kind = rng_kind[3])
-  model <- stanli::stanli_model(code = code, data = json, seed = seed, fast_math = fast_math)
+# Runs on a worker.
+sample_chain <- function(code, data, seed, chain_id, init, warmup, samples, thin,
+                         delta, max_depth, threads, save_warmup, fast_math, controls) {
+  model <- stanli::stanli_model(code = code, data = data, seed = seed, fast_math = fast_math)
   args <- c(list(
     model,
-    chains = 1L, seed = chain_seed, warmup = warmup, samples = samples, thin = thin,
-    delta = delta, max_depth = max_depth, refresh = 0L,
+    chains = 1L, seed = seed, chain_id = chain_id, warmup = warmup, samples = samples,
+    thin = thin, delta = delta, max_depth = max_depth, refresh = 0L,
     threads_per_chain = threads, save_warmup = save_warmup
   ), controls)
   if (is.matrix(init)) {
@@ -180,7 +184,7 @@ sample_chain <- function(code, json, seed, chain_seed, init, warmup, samples, th
 }
 
 # Single-chain stanli fits as one multi-chain fit, chains in order.
-bind_chains <- function(fits, model, seed) {
+bind_chains <- function(fits, model) {
   chains <- length(fits)
   bind <- function(name) {
     first <- fits[[1]][[name]]
@@ -193,22 +197,22 @@ bind_chains <- function(fits, model, seed) {
     }
     out
   }
+  per_chain <- function(field) unlist(lapply(fits, function(f) f$report[[field]]))
   fit <- fits[[1]]
   fit$draws <- bind("draws")
   fit$sampler <- bind("sampler")
   fit$unconstrained <- bind("unconstrained")
   fit$report <- list(
-    available = all(vapply(fits, function(f) isTRUE(f$report$available), logical(1))),
-    warmup_seconds = unlist(lapply(fits, function(f) f$report$warmup_seconds)),
-    sampling_seconds = unlist(lapply(fits, function(f) f$report$sampling_seconds)),
-    n_divergent = unlist(lapply(fits, function(f) f$report$n_divergent)),
-    n_max_treedepth = unlist(lapply(fits, function(f) f$report$n_max_treedepth))
+    warmup_seconds = per_chain("warmup_seconds"),
+    sampling_seconds = per_chain("sampling_seconds"),
+    n_divergent = per_chain("n_divergent"),
+    n_max_treedepth = per_chain("n_max_treedepth")
   )
   # Adapted per chain: one step size and one inverse metric each.
   fit$step_size <- vapply(fits, function(f) f$step_size, numeric(1))
   fit$inv_metric <- lapply(fits, function(f) f$inv_metric[[1]])
   fit$chains <- as.integer(chains)
-  fit$seed <- seed
+  fit$chain_id <- 1L
   fit$model <- model
   fit
 }

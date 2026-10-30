@@ -1,0 +1,22 @@
+CHOLMOD: keep the band limits of cholmod_copy signed.
+
+Copying an unsymmetric matrix to a symmetric lower one computed the lower band limit
+as `size_t nlo = -nrow` and passed it to cholmod_band(), which takes int64_t. With a
+64-bit size_t that round-trips to -nrow; with webR's 32-bit size_t it becomes
+2^32 - nrow, a large positive band, and the copy comes back empty. In Matrix that
+empties crossprod() and tcrossprod() of an RsparseMatrix and
+solve(<CHMfactor>, system = "L" or "LD"). Same lines on SuiteSparse's dev branch.
+
+--- a/src/SuiteSparse/CHOLMOD/Utility/t_cholmod_copy.c
++++ b/src/SuiteSparse/CHOLMOD/Utility/t_cholmod_copy.c
+@@ -165,8 +165,8 @@
+         // A is unsymmetric; C is symmetric upper or lower
+         //----------------------------------------------------------------------
+
+-        size_t nlo = (stype > 0) ? 0 : (-nrow) ;
+-        size_t nup = (stype > 0) ? ncol : 0 ;
++        int64_t nlo = (stype > 0) ? 0 : (-nrow) ;
++        int64_t nup = (stype > 0) ? ncol : 0 ;
+         C = CHOLMOD(band) (A, nlo, nup, mode, Common) ;
+         RETURN_IF_ERROR ;
+         C->stype = stype ;

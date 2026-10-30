@@ -11,9 +11,12 @@ utils::globalVariables(c(
 ))
 
 require_namespaces <- function(target, pkgs) {
-  # Older stanli lacks what stanliWebR relies on: partial starting values, dropping
-  # variables in as_stanfit(), stanli_check_syntax().
-  minimum <- c(stanli = "0.21.0")
+  # Older stanli needs the workarounds this version dropped: it cannot take
+  # three-dimensional data, while-loop sizes or reject() in a size (rbmi,
+  # OncoBayes2), sort_asc() or chain_id, and lacks parameter_names(),
+  # unconstrain(seed =, ignore_unknown =) and as_stanfit(plain =). Before 0.25.0
+  # it also loses the generated quantities of OncoBayes2's combination models.
+  minimum <- c(stanli = "0.25.0")
   for (pkg in pkgs) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop("stanliWebR cannot patch ", target, ": the ", pkg,
@@ -35,12 +38,9 @@ patch_namespace <- function(pkg, replacements) {
   helpers <- new.env(parent = ns)
   helpers$sample_stanfit <- sample_stanfit
   helpers$rstan_controls <- rstan_controls
-  helpers$with_live_model <- with_live_model
-  helpers$stanli_helper_functions <- stanli_helper_functions
   helpers$rstan_init <- rstan_init
   helpers$per_group_init <- per_group_init
   helpers$stanli_sampling <- stanli_sampling
-  helpers$oncobayes2_sampling <- oncobayes2_sampling
   attached <- paste0("package:", pkg)
   for (name in names(replacements)) {
     if (!exists(name, envir = ns, mode = "function", inherits = FALSE)) {

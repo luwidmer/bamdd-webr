@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Download the bundle of the seven wasm packages that have no usable upstream build,
+# Download the bundle of the twelve wasm packages built for this project,
 # as pinned in lib/WASM_REPO, and unpack it into vendor/wasm-repo/. This is what lets
 # a build skip Docker; see "The wasm package bundle" in DEPLOY.md. The same Release
 # carries every other pinned package as resolved, unpacked into vendor/pkgcache/, so
@@ -36,7 +36,7 @@ want="$(sed -n 's/^SHA256=//p' "$pin")"
 packages_want="$(sed -n 's/^PACKAGES_SHA256=//p' "$pin")"
 if [ -z "$tag" ] || [ -z "$want" ] || [ "$tag" = PENDING ] || [ "$want" = PENDING ]; then
   die "lib/WASM_REPO names no published bundle (TAG=${tag:-unset}).
-  Run .github/workflows/wasm-repo.yml and merge its pull request, or build the seven
+  Run .github/workflows/wasm-repo.yml and merge its pull request, or build the twelve
   packages locally (README, \"Build\")."
 fi
 if [ -z "$packages_want" ] || [ "$packages_want" = PENDING ]; then

@@ -1,4 +1,28 @@
+import { CompletionPopup, commonPrefix, insertion } from './complete.js';
+
 const PROMPT_MAIN = '> ';
+
+// Prompts at which a line is R code; readline() and menu() prompts are not completed.
+const CODE_PROMPT = /^(?:> |\+ |Browse\[\d+\]> )$/;
+
+// Where the primary pointer is a finger, the input line is mirrored into xterm's hidden
+// textarea instead of being fed through xterm's own IME handling; see mirrorInput().
+const touchQuery = window.matchMedia('(pointer: coarse)');
+
+// Keys the phone key row and the mirrored textarea send, as the sequences xterm would.
+const KEY_DATA = {
+  Enter: '\r',
+  Tab: '\t',
+  Escape: '\x1b',
+  ArrowUp: '\x1b[A',
+  ArrowDown: '\x1b[B',
+  ArrowRight: '\x1b[C',
+  ArrowLeft: '\x1b[D',
+  Home: '\x1b[H',
+  End: '\x1b[F',
+  Delete: '\x1b[3~',
+};
+const CTRL_DATA = { a: '\x01', c: '\x03', e: '\x05', l: '\x0c' };
 
 // xterm colours itself in JS, and reading the CSS palette back is not an option: an
 // unregistered custom property computes to its token stream, so getComputedStyle would
@@ -36,12 +60,13 @@ const THEMES = {
 };
 
 export class Terminal {
-  constructor(host, { onInput, onInterrupt, onBusyChange, onPrompt, theme }) {
+  constructor(host, { onInput, onInterrupt, onBusyChange, onPrompt, complete, theme }) {
     this.host = host;
     this.onInput = onInput;
     this.onInterrupt = onInterrupt;
     this.onBusyChange = onBusyChange;
     this.onPrompt = onPrompt;
+    this.complete = complete;
 
     // Lines queued by "Run" are held here and echoed only when R asks for input,
     // otherwise the transcript interleaves out of order with R's own output.
@@ -76,6 +101,24 @@ export class Terminal {
     new ResizeObserver(() => this.safeFit()).observe(host);
     this.term.onData((d) => this.handleData(d));
     this.term.registerLinkProvider({ provideLinks: (y, done) => done(this.linksOn(y)) });
+
+    // A completion request in flight is dropped once this moves on.
+    this.completionSeq = 0;
+    // { start, all } while the list is open: the candidates replace line[start, cursor).
+    this.completion = null;
+    this.popup = new CompletionPopup({ onPick: (c) => this.applyCompletion(c) });
+    this.term.onScroll(() => this.positionCompletion());
+    // Picking from the list does not move focus, so this only fires on leaving the console.
+    this.term.textarea.addEventListener('blur', () => this.closeCompletion());
+
+    this.composing = false;
+    this.mirror = touchQuery.matches;
+    touchQuery.addEventListener('change', () => {
+      this.mirror = touchQuery.matches;
+      if (this.mirror) this.syncTextarea();
+      else this.term.textarea.value = '';
+    });
+    this.installMirror();
   }
 
   /** Make text matching `pattern` (a global regex) clickable anywhere in the console. */
@@ -124,6 +167,7 @@ export class Terminal {
     this.fit.fit();
     // xterm reflows the wrapped input; repaint so the cursor arithmetic matches it.
     if (this.term.cols !== cols && this.acceptingInput) this.redrawAll();
+    this.positionCompletion();
   }
 
   focus() {
@@ -150,6 +194,7 @@ export class Terminal {
       return;
     }
     // At a prompt: print above it and redraw prompt and input, as readline does.
+    this.closeCompletion();
     const cols = this.term.cols || 80;
     const rows = Math.floor(this.at / cols);
     this.term.write(`\r${rows > 0 ? `\x1b[${rows}A` : ''}\x1b[J${text.replace(/\n/g, '\r\n')}\r\n${this.currentPrompt ?? PROMPT_MAIN}`);
@@ -184,6 +229,8 @@ export class Terminal {
     this.acceptingInput = false;
     this.line = '';
     this.cursor = 0;
+    this.closeCompletion();
+    this.syncTextarea();
     this.setBusy(true);
   }
 
@@ -198,6 +245,7 @@ export class Terminal {
     this.at = this.promptLen;
     if (this.drain()) return;
     this.setBusy(false);
+    this.syncTextarea();
     // The unfinished last line of a multi-line paste waits here for more typing.
     if (this.pendingInput) {
       const text = this.pendingInput;
@@ -220,8 +268,10 @@ export class Terminal {
 
   submit(line) {
     this.acceptingInput = false;
+    this.closeCompletion();
     // From the end of the input, or R's output lands on the wrapped rows after the cursor.
     this.term.write(`${this.moveTo(this.promptLen + this.line.length)}\r\n`);
+    this.syncTextarea();
     if (line.trim()) {
       this.history.push(line);
       if (this.history.length > 500) this.history.shift();
@@ -275,6 +325,7 @@ export class Terminal {
     this.at = end;
     s += `\x1b[J${this.moveTo(this.promptLen + this.cursor)}`;
     this.term.write(s);
+    this.syncTextarea();
   }
 
   /** Repaint prompt and input from scratch, e.g. after the screen was cleared. */
@@ -296,6 +347,7 @@ export class Terminal {
   setCursor(cursor) {
     this.cursor = cursor;
     this.term.write(this.moveTo(this.promptLen + cursor));
+    this.syncTextarea();
   }
 
   replaceLine(next) {
@@ -324,9 +376,37 @@ export class Terminal {
     }
     if (!this.acceptingInput) return;
 
+    if (this.completion) {
+      switch (data) {
+        case '\x1b[A':
+          this.popup.move(-1);
+          return;
+        case '\x1b[B':
+          this.popup.move(1);
+          return;
+        case '\t':
+        case '\r':
+          this.applyCompletion(this.popup.selected);
+          return;
+        case '\x1b':
+          this.closeCompletion();
+          return;
+        default:
+          break;
+      }
+    }
+
+    this.editLine(data);
+    this.updateCompletion();
+  }
+
+  editLine(data) {
     switch (data) {
       case '\r':
         this.submit(this.line);
+        return;
+      case '\t':
+        this.requestCompletion();
         return;
       case '\x7f': // backspace
         if (this.cursor > 0) {
@@ -390,5 +470,230 @@ export class Terminal {
     // Anything left with a control character is an unhandled key sequence.
     const text = data.replace(/\t/g, '  ');
     if (!/[\x00-\x1f\x7f]/.test(text)) this.insert(text);
+  }
+
+  /** A key from the phone key row, by its KeyboardEvent.key name. */
+  pressKey(key) {
+    if (KEY_DATA[key]) this.handleData(KEY_DATA[key]);
+  }
+
+  // ---------------------------------------------------------------- completion
+
+  /** Tab: complete the token before the cursor, from R itself. */
+  async requestCompletion() {
+    if (!this.complete || !CODE_PROMPT.test(this.currentPrompt ?? PROMPT_MAIN)) return;
+    const { line, cursor } = this;
+    const seq = ++this.completionSeq;
+    let res;
+    try {
+      res = await this.complete(line, cursor);
+    } catch {
+      return;
+    }
+    if (!res || seq !== this.completionSeq || !this.acceptingInput) return;
+    if (this.line !== line || this.cursor !== cursor) return;
+    const { start, candidates } = res;
+    this.completion = { start, all: candidates };
+    if (candidates.length === 1) {
+      this.applyCompletion(candidates[0]);
+      return;
+    }
+    const token = line.slice(start, cursor);
+    const prefix = commonPrefix(candidates);
+    if (prefix.length > token.length && prefix.startsWith(token)) this.replaceToken(start, prefix);
+    this.popup.setItems(candidates);
+    this.positionCompletion();
+  }
+
+  replaceToken(start, text) {
+    this.line = this.line.slice(0, start) + text + this.line.slice(this.cursor);
+    this.cursor = start + text.length;
+    this.renderFrom(start);
+  }
+
+  applyCompletion(candidate) {
+    if (!this.completion || candidate == null || !this.acceptingInput) return;
+    const { start } = this.completion;
+    this.closeCompletion();
+    this.replaceToken(start, insertion(candidate));
+  }
+
+  /** Narrow the open list to what has been typed since, or close it. */
+  updateCompletion() {
+    if (!this.completion) return;
+    const { start, all } = this.completion;
+    const token = this.line.slice(start, this.cursor);
+    const items = this.cursor < start || /[\s(),;]/.test(token) ? [] : all.filter((c) => c.startsWith(token));
+    if (!items.length || (items.length === 1 && items[0] === token)) {
+      this.closeCompletion();
+      return;
+    }
+    this.popup.setItems(items);
+    this.positionCompletion();
+  }
+
+  closeCompletion() {
+    this.completion = null;
+    this.completionSeq++;
+    this.popup.close();
+  }
+
+  /** Put the list under the start of the token, once xterm has drawn the input. */
+  positionCompletion() {
+    if (!this.completion) return;
+    const offset = this.promptLen + this.completion.start;
+    // xterm's cursor reaches this.at only when the queued writes are parsed.
+    const at = this.at;
+    this.term.write('', () => {
+      const screen = this.term.element?.querySelector('.xterm-screen');
+      if (!this.completion || !screen) return;
+      const rect = screen.getBoundingClientRect();
+      const { cols, rows } = this.term;
+      const cellW = rect.width / cols;
+      const cellH = rect.height / rows;
+      const b = this.term.buffer.active;
+      const row = b.baseY + b.cursorY - b.viewportY + Math.floor(offset / cols) - Math.floor(at / cols);
+      const top = rect.top + row * cellH;
+      this.popup.show({ left: rect.left + (offset % cols) * cellW, top, bottom: top + cellH });
+    });
+  }
+
+  // ---------------------------------------------------------------- touch keyboards
+
+  /**
+   * xterm turns textarea changes into keystrokes by diffing the textarea, which only
+   * works for typing at the end: when a phone keyboard swaps a whole word for one of its
+   * suggestions, xterm re-sends the textarea's contents and the line fills with
+   * fragments. With a touch pointer xterm never sees the textarea's events. Instead the
+   * textarea always holds exactly the input line, so the keyboard edits it as it would
+   * any text field, and the line is read back from it after every change.
+   */
+  installMirror() {
+    const ta = this.term.textarea;
+    const swallow = (type, handler) => {
+      // Capturing on the host runs first, and stopping here keeps the event from xterm.
+      this.host.addEventListener(type, (e) => {
+        if (!this.mirror || e.target !== ta) return;
+        e.stopPropagation();
+        handler?.(e);
+      }, true);
+    };
+    swallow('keydown', (e) => this.mirrorKeydown(e));
+    swallow('keypress');
+    swallow('keyup');
+    swallow('beforeinput');
+    swallow('compositionstart', () => {
+      this.composing = true;
+    });
+    swallow('compositionupdate');
+    swallow('compositionend', () => {
+      this.composing = false;
+      this.mirrorInput();
+    });
+    swallow('input', () => this.mirrorInput());
+    swallow('paste', (e) => {
+      e.preventDefault();
+      const text = e.clipboardData?.getData('text/plain');
+      if (text) this.handleData(text);
+    });
+    // Moving the cursor by dragging on the space bar.
+    document.addEventListener('selectionchange', () => {
+      if (this.mirror && document.activeElement === ta) this.mirrorSelection();
+    });
+    // xterm empties the textarea when it loses focus.
+    ta.addEventListener('focus', () => this.syncTextarea());
+  }
+
+  mirrorKeydown(e) {
+    // An IME key; the input event that follows says what it did.
+    if (e.isComposing || e.keyCode === 229) return;
+    let data;
+    if (e.ctrlKey && !e.altKey && !e.metaKey) data = CTRL_DATA[e.key.toLowerCase()];
+    else if (!e.ctrlKey && !e.altKey && !e.metaKey) data = KEY_DATA[e.key];
+    // Everything else, Backspace included, edits the textarea natively.
+    if (!data) return;
+    e.preventDefault();
+    this.term.scrollToBottom();
+    this.handleData(data);
+  }
+
+  mirrorInput() {
+    const ta = this.term.textarea;
+    if (!this.acceptingInput) {
+      if (!this.composing) ta.value = '';
+      return;
+    }
+    // xterm does this for input it handles itself.
+    this.term.scrollToBottom();
+    const value = ta.value;
+    const breaks = value.match(/\r\n?|\n/g)?.length ?? 0;
+    if (breaks === 1) {
+      // Enter, wherever the cursor is, runs the whole line -- or picks the completion.
+      this.composing = false;
+      const at = value.search(/\r\n?|\n/);
+      const line = value.replace(/\r\n?|\n/, '');
+      if (this.completion) {
+        this.applyMirror(line, at);
+        this.syncTextarea();
+        this.applyCompletion(this.popup.selected);
+        return;
+      }
+      this.applyMirror(line, line.length);
+      this.submit(this.line);
+      return;
+    }
+    if (breaks > 1) {
+      this.composing = false;
+      this.line = '';
+      this.cursor = 0;
+      this.paste(value);
+      return;
+    }
+    this.applyMirror(value, ta.selectionStart);
+    this.updateCompletion();
+  }
+
+  /** Take the line from the textarea and repaint what changed. */
+  applyMirror(value, cursor) {
+    if (value === this.line && cursor === this.cursor) return;
+    let from = 0;
+    while (from < this.line.length && from < value.length && this.line[from] === value[from]) from++;
+    this.line = value;
+    this.cursor = Math.min(cursor, value.length);
+    this.mirroring = true;
+    try {
+      this.renderFrom(from);
+    } finally {
+      this.mirroring = false;
+    }
+  }
+
+  mirrorSelection() {
+    const ta = this.term.textarea;
+    if (!this.acceptingInput || this.composing || ta.value !== this.line) return;
+    if (ta.selectionStart === this.cursor || ta.selectionStart !== ta.selectionEnd) return;
+    this.mirroring = true;
+    try {
+      this.setCursor(ta.selectionStart);
+    } finally {
+      this.mirroring = false;
+    }
+    this.updateCompletion();
+  }
+
+  /**
+   * Make the textarea hold the input line again after the line changed some other way
+   * (history, completion, a prompt). Overwriting it also ends any composition in
+   * progress, so the keyboard starts afresh from the new text.
+   */
+  syncTextarea() {
+    const ta = this.term?.textarea;
+    if (!this.mirror || this.mirroring || !ta) return;
+    const value = this.acceptingInput ? this.line : '';
+    const cursor = this.acceptingInput ? this.cursor : 0;
+    if (ta.value === value && ta.selectionStart === cursor && ta.selectionEnd === cursor) return;
+    this.composing = false;
+    ta.value = value;
+    ta.setSelectionRange(cursor, cursor);
   }
 }

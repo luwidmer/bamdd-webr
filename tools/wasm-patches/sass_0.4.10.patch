@@ -1,0 +1,23 @@
+Backport of the upstream sass fix for C++ exceptions under Emscripten: pull request
+https://github.com/rstudio/sass/pull/155 ("Fix throwing exceptions under Emscripten",
+commit a8d149b, after 0.4.10 and not yet on CRAN; MIT). src/Makevars hands libsass's
+own Makefile CFLAGS but not CXXFLAGS, so libsass's C++ is compiled without
+-fwasm-exceptions, and the first Sass error -- which libsass raises as a C++ exception
+-- aborts webR instead of becoming an R error. rwasm's `uname` reports Emscripten, so
+the hunk applies inside the build image. rwasm builds sass from that commit for
+repo.r-wasm.org (its webr-remotes list), hence the .9000 there.
+`patch` ignores this text before the first diff header.
+
+--- a/src/libsass/Makefile
++++ b/src/libsass/Makefile
+@@ -73,6 +73,10 @@ else
+ 	STATIC_LIBSTDCPP ?= 0
+ endif
+ 
++ifeq (Emscripten,$(UNAME))
++	CXXFLAGS += -fwasm-exceptions
++endif
++
+ ifndef SASS_LIBSASS_PATH
+ 	SASS_LIBSASS_PATH = .
+ endif

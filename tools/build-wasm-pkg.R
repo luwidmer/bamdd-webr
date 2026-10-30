@@ -20,6 +20,7 @@
 #    headers the compile does need are host-installed in the image. NA restores the
 #    closure build.
 #  * WASM_PKG_STAN -- run prepare_stan_source() first; see there.
+#  * WASM_PKG_PINS -- "pkg=version,..." from lib/MANIFEST.tsv; see install_linking_to().
 
 options(warn = 1)
 
@@ -94,10 +95,76 @@ prepare_stan_source <- function(tarball, stub) {
   out
 }
 
+# The compile reads LinkingTo headers from the image's host library. They must match
+# what the library will carry (mmrm warns at load unless compiled against TMB >= 1.9.15,
+# and TMB's R code drives the template code mmrm compiled from its headers), so a
+# LinkingTo package the image lacks, or holds at another version, is installed at the
+# version the library pins.
+install_linking_to <- function(tarball, pins) {
+  work <- file.path(tempdir(), "desc")
+  unlink(work, recursive = TRUE)
+  utils::untar(tarball, exdir = work, files = paste0(sub("_.*", "", basename(tarball)), "/DESCRIPTION"))
+  desc <- read.dcf(list.files(work, "^DESCRIPTION$", recursive = TRUE, full.names = TRUE), fields = "LinkingTo")
+  wanted <- trimws(sub("\\(.*", "", strsplit(desc[1, "LinkingTo"] %||% "", ",")[[1]]))
+  wanted <- wanted[nzchar(wanted)]
+  for (pkg in wanted) {
+    want <- pins[[pkg]]
+    have <- tryCatch(as.character(utils::packageVersion(pkg)), error = function(e) NA_character_)
+    if (!is.na(have) && (is.null(want) || identical(have, want))) next
+    if (is.null(want)) {
+      say("installing LinkingTo", pkg, "(not pinned; current CRAN)")
+      utils::install.packages(pkg)
+    } else {
+      say("installing LinkingTo", pkg, want, "as pinned (host has", have, ")")
+      file <- paste0(pkg, "_", want, ".tar.gz")
+      src <- tryCatch({
+        dest <- file.path(tempdir(), file)
+        # A superseded version is only in the archive; the 404 here is expected.
+        suppressWarnings(utils::download.file(paste0(mirror, "/src/contrib/", file), dest, quiet = TRUE))
+        dest
+      }, error = function(e) {
+        dest <- file.path(tempdir(), file)
+        utils::download.file(paste0(mirror, "/src/contrib/Archive/", pkg, "/", file), dest, quiet = TRUE)
+        dest
+      })
+      utils::install.packages(src, repos = NULL, type = "source")
+    }
+    if (!requireNamespace(pkg, quietly = TRUE)) die("Could not install LinkingTo package ", pkg)
+  }
+}
+
+`%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+
 options(repos = c(CRAN = mirror))
 assignInNamespace("ppm_config", list(cran_mirror = mirror, platforms = "source"), ns = "rwasm")
 
+pins_env <- Sys.getenv("WASM_PKG_PINS")
+pins <- if (nzchar(pins_env)) {
+  kv <- strsplit(strsplit(pins_env, ",", fixed = TRUE)[[1]], "=", fixed = TRUE)
+  stats::setNames(lapply(kv, `[[`, 2L), vapply(kv, `[[`, "", 1L))
+} else {
+  list()
+}
+install_linking_to(tarball, pins)
+
 if (nzchar(Sys.getenv("WASM_PKG_STAN"))) tarball <- prepare_stan_source(tarball, stub)
+
+# The image's webR tree is built without flang, yet rwasm's webr-vars.mk links every
+# package against FLIBS = $(FORTRAN_WASM_LDADD), the flang runtime archive named in
+# webR's tools/fortran.mk. Any package whose Makevars uses $(FLIBS) (Matrix, and most
+# that link LAPACK) then fails at the link. C and C++ code needs no Fortran runtime:
+# BLAS and LAPACK resolve against webR's own libRblas/libRlapack side modules. rwasm's
+# webr-vars.mk includes ~/.webr-vars.mk before fortran.mk, so `override` wins there.
+drop_missing_fortran_runtime <- function() {
+  fortran_mk <- file.path(getOption("rwasm.webr_root", "/opt/webr"), "tools", "fortran.mk")
+  if (!file.exists(fortran_mk)) return(invisible())
+  ldadd <- sub("^FORTRAN_WASM_LDADD[[:space:]]*=[[:space:]]*", "",
+    grep("^FORTRAN_WASM_LDADD[[:space:]]*=", readLines(fortran_mk), value = TRUE))
+  if (length(ldadd) != 1L || !nzchar(ldadd) || file.exists(ldadd)) return(invisible())
+  cat("override FORTRAN_WASM_LDADD =\n", file = path.expand("~/.webr-vars.mk"), append = TRUE)
+  say("no flang runtime at", ldadd, "in this image; linking without FLIBS")
+}
+drop_missing_fortran_runtime()
 
 say("building", basename(tarball), "against", mirror, "| dependencies:", deps_env)
 

@@ -21,10 +21,9 @@ with stanli and returns an rstan \code{stanfit}. rbmi's own draw extraction,
 effective-sample-size check and HMC diagnostics then run on that object
 unchanged.
 
-rbmi's two Stan helper functions are rewritten with \code{for} loops, which stanli
-accepts; the posterior is unchanged. Starting values follow rstan: the MMRM
-estimates rbmi supplies are used for every name that is a Stan parameter, and
-the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
+rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
+MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
+and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
 }
 \examples{
 \dontrun{

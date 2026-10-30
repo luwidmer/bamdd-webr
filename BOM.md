@@ -20,7 +20,7 @@ and the version pins in [tools/fetch-webr.sh](tools/fetch-webr.sh),
 | --- | --- | --- | --- | --- |
 | webR | 0.6.0 | `github.com/r-wasm/webr` release tarball → `vendor/webr/` | webR's own sources MIT; the distribution embeds R, so GPL-2 \| GPL-3 governs what is served | R compiled to WebAssembly; `R.wasm`, `R.js`, `webr.mjs`, worker, VFS |
 | R | 4.6.0 | bundled inside webR 0.6.0 | GPL-2 \| GPL-3 | the interpreter itself |
-| stanli | 0.21.0 | `seantalts.r-universe.dev` | BSD-3-Clause | Stan *interpreter* — replaces the absent C++ toolchain; `brm()`, `rbmi::method_bayes()`, `RBesT::gMAP()` and `OncoBayes2::blrm_exnex()` sample with it through `stanliWebR` |
+| stanli | 0.25.0 | `seantalts.r-universe.dev` | BSD-3-Clause | Stan *interpreter* — replaces the absent C++ toolchain; `brm()`, `rbmi::method_bayes()`, `RBesT::gMAP()` and `OncoBayes2::blrm_exnex()` sample with it through `stanliWebR` |
 | Emscripten | 5.0.7 | `emscripten/emsdk` image (build-time only) | MIT / NCSA | the ABI everything above is compiled to |
 
 The webR version, the bundled R version and the `contrib/4.6` package directory are a
@@ -59,7 +59,7 @@ See [LICENSE](LICENSE) and [pkg/stanliWebR/inst/LICENSE.md](pkg/stanliWebR/inst/
 | Development servers | [serve.py](serve.py) (stdlib only), [serve.R](serve.R) (needs `httpuv`) — exist solely to send COOP/COEP | GPL-3.0-or-later |
 | Build scripts | `tools/fetch-webr.sh`, `fetch-ui-libs.sh`, `fetch-wasm-repo.sh`, `build-library.R`, `pack-library.R`, `build-first-party.R`, `build-wasm-pkg.{R,sh}`, `vendor-wasm-repo.R`, `convert-bamdd.R`, `convert-bamdd-slides.R`, `make-dist.sh`, `deploy.sh` | GPL-3.0-or-later |
 | Deployment config | [_headers](_headers) (COOP/COEP for Cloudflare Pages), `.github/workflows/{wasm-repo,deploy}.yml`, [tools/smoke-test.mjs](tools/smoke-test.mjs) | GPL-3.0-or-later |
-| `stanliWebR` R package | [pkg/stanliWebR](pkg/stanliWebR) 0.7.0 — runs brms's rstan backend, `rbmi::method_bayes()`, `RBesT::gMAP()`, `OncoBayes2::blrm_exnex()` and `rstan::stan_model()` programs on stanli; with `cores` > 1, one chain per webR worker | Apache-2.0 |
+| `stanliWebR` R package | [pkg/stanliWebR](pkg/stanliWebR) 0.8.1 — runs brms's rstan backend, `rbmi::method_bayes()`, `RBesT::gMAP()`, `OncoBayes2::blrm_exnex()` and `rstan::stan_model()` programs on stanli; with `cores` > 1, one chain per webR worker | Apache-2.0 |
 | `miraiWebR` R package | [pkg/miraiWebR](pkg/miraiWebR) 0.1.3 — a subset of the `mirai` API, and a `future` backend, on background webR workers started by `js/workers.js`; no code from `mirai` | Apache-2.0 |
 | Patches | `tools/wasm-patches/jinjar_0.3.2.patch` (backport of nlohmann/json PR #3082, v3.10.4, MIT, for libc++), `tools/wasm-patches/webr-tbb-stubs.cpp` (TBB no-ops, from RBesT, GPL (>= 3)) | upstream terms |
 | Examples | `workspace/webr-examples/`: `brms-kidney.R`, `stanli-eight-schools.R`, `rbmi-bayes-stanli.R`, `reproducibility.R`, `parallel.R` | GPL-3.0-or-later |
@@ -93,7 +93,7 @@ and the harness from GitHub.
 | `RBesT` | 1.12-0 | GPL (>= 3) | its Stan model is an Rcpp module in its own `.so`; needs a real `rstan`. Built from the CRAN release with `WASM_PKG_STAN=1`, which drops the native TBB linkage `wasm-ld` cannot use |
 | `OncoBayes2` | 0.10-0 | GPL (>= 3) | same rstantools construction as `RBesT`, and built the same way with `WASM_PKG_STAN=1` |
 | `jinjar` | 0.3.2 | MIT | no wasm build anywhere; vendored inja/nlohmann does not compile under libc++ |
-| `stanliWebR` | 0.7.0 | Apache-2.0 | first-party, built from `pkg/stanliWebR` |
+| `stanliWebR` | 0.8.1 | Apache-2.0 | first-party, built from `pkg/stanliWebR` |
 | `miraiWebR` | 0.1.3 | Apache-2.0 | first-party, built from `pkg/miraiWebR` |
 
 ## 6. Package sources
@@ -244,8 +244,8 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `scales` | 1.4.0 | repo.r-wasm.org | MIT |
 | `simsurv` | 1.0.1 | repo.r-wasm.org | GPL (>= 3) |
 | `StanHeaders` | 2.39.1 | vendor/wasm-repo | BSD-3-Clause |
-| `stanli` | 0.22.0 | seantalts* | BSD-3-Clause |
-| `stanliWebR` | 0.7.0 | vendor/wasm-repo | Apache-2.0 |
+| `stanli` | 0.25.0 | seantalts* | BSD-3-Clause |
+| `stanliWebR` | 0.8.1 | vendor/wasm-repo | Apache-2.0 |
 | `statmod` | 1.5.2 | repo.r-wasm.org | GPL-2 or GPL-3 |
 | `stringi` | 1.8.9 | repo.r-wasm.org | file LICENSE (BSD-style + ICU) |
 | `stringr` | 1.6.0 | repo.r-wasm.org | MIT |

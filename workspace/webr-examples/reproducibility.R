@@ -68,17 +68,15 @@ model {
 "
 schools <- list(J = 8L, y = c(28, 8, -3, 7, -1, 1, 18, 12), sigma = c(15, 10, 16, 11, 9, 11, 10, 18))
 
-# stanli also draws from R's own generator, so its `seed` argument alone is not
-# enough: two runs with seed = 123 but different R RNG states differ completely.
+# stanli's `seed` alone fixes the draws; R's own generator plays no part.
 results$stanli <- twice("stanli", function() {
-  set.seed(123)
   mod <- stanli_model(code = schools_code, data = schools)
   invisible(capture.output(fit <- sample_model(mod, chains = 2, warmup = 500, samples = 1000, seed = 123)))
   unlist(extract(fit))
 })
 
 # ---- brms, sampled by stanli --------------------------------------------------------
-# stanliWebR seeds R's generator from brm(seed = ) itself, as stanli needs.
+# brm(seed = ) fixes the draws.
 results$brms <- twice("brms", function() {
   fit <- brm(time ~ age * sex, data = kidney,
              chains = 2, iter = 1000, seed = 1234, refresh = 0, silent = 2)
