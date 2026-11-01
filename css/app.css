@@ -422,6 +422,11 @@ span.tab { cursor: default; }
 #tab-console.active { display: block; }
 /* On .xterm, not the host: FitAddon subtracts this padding but not the host's. */
 #tab-console .xterm { padding: 4px 2px 2px 6px; height: 100%; }
+/* xterm sizes its input textarea to the cursor's cell only when the cursor moves, and
+   opened in a hidden pane (the phone layout) that cell is 0x0. A phone keyboard then
+   leaves the caret before each character it inserts, so the input typed right to left
+   until something moved the cursor. Never let the textarea be empty-sized. */
+#tab-console .xterm .xterm-helper-textarea { min-width: 1px; min-height: 1px; }
 
 /* ---------- plots ---------- */
 #view-plots { background: var(--paper); }

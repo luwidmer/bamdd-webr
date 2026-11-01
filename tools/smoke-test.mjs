@@ -686,6 +686,26 @@ async function checkCompletion(page, evalR, { settle }) {
   check('phone: key row shows while typing in the console',
     await settle(() => document.querySelector('.key-row[data-target="console"]')?.offsetParent != null));
 
+  // xterm leaves its textarea 0x0 when the console opened in a hidden pane, until the
+  // cursor moves; a phone keyboard's insertions then left the caret in front of them,
+  // so the line typed right to left. Mid-session xterm re-sizes it as soon as the cursor
+  // moves, so check the guard itself: with xterm's inline 0x0, app.css keeps it 1px.
+  const minSize = await page.evaluate(() => {
+    const ta = window.__app.terminal.term.textarea;
+    const saved = ta.style.cssText;
+    ta.style.cssText = 'left: 0px; top: 0px; width: 0px; height: 0px; line-height: 0px; z-index: -5;';
+    const cs = getComputedStyle(ta);
+    const size = [parseFloat(cs.width), parseFloat(cs.height)];
+    ta.style.cssText = saved;
+    ta.focus();
+    return size;
+  });
+  check('phone: the console textarea is never zero-sized', minSize[0] >= 1 && minSize[1] >= 1, minSize.join('x'));
+  for (const ch of 'abc') await cdp.send('Input.insertText', { text: ch });
+  const order = await page.evaluate(() => window.__app.terminal.line);
+  check('phone: keyboard input types left to right', order === 'abc', order);
+  await clear();
+
   // Gboard's sequence: a composition per word, then a tapped suggestion that swaps the
   // misspelt word for a longer one, cursor ending mid-line.
   const typed = await page.evaluate(() => {
