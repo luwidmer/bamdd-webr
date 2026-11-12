@@ -65,17 +65,47 @@ test_that("a program stanli cannot fully compute stops rather than losing output
 test_that("rbmi's Bayesian imputation samples with stanli", {
   skip_on_cran()
   skip_if_not_installed("rbmi")
-  dat <- rbmi::antidepressant_data
-  dat <- rbmi::expand_locf(
-    dat, PATIENT = levels(dat$PATIENT), VISIT = levels(dat$VISIT),
-    vars = c("BASVAL", "THERAPY"), group = "PATIENT", order = c("PATIENT", "VISIT")
-  )
-  vars <- rbmi::set_vars(outcome = "CHANGE", visit = "VISIT", subjid = "PATIENT",
-                         group = "THERAPY", covariates = c("BASVAL*VISIT", "THERAPY*VISIT"))
   for (same_cov in c(TRUE, FALSE)) {
     method <- rbmi::method_bayes(n_samples = 10, same_cov = same_cov,
                                  control = rbmi::control_bayes(warmup = 100, thin = 2, seed = 5))
-    d <- rbmi::draws(data = dat, vars = vars, method = method, quiet = TRUE)
+    d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
     expect_s3_class(d, "draws")
   }
+})
+
+test_that("rbmi's AR(1) and CS models start from the MMRM fit where rstan would", {
+  skip_on_cran()
+  skip_if_not_installed("rbmi")
+  for (covariance in c("ar1", "cs")) {
+    for (same_cov in c(TRUE, FALSE)) {
+      method <- rbmi::method_bayes(
+        n_samples = 10, covariance = covariance, same_cov = same_cov,
+        control = rbmi::control_bayes(warmup = 100, thin = 2, seed = 5, init = "mmrm")
+      )
+      d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
+      expect_s3_class(d, "draws")
+    }
+  }
+})
+
+test_that("rbmi's sampler settings reach stanli", {
+  skip_on_cran()
+  skip_if_not_installed("rbmi")
+  method <- rbmi::method_bayes(n_samples = 10, control = rbmi::control_bayes(
+    warmup = 100, thin = 2, seed = 5, control = list(adapt_delta = 0.95, max_treedepth = 12)
+  ))
+  d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
+  args <- d$fit@stan_args[[1]]
+  expect_identical(args$control$adapt_delta, 0.95)
+  expect_identical(args$control$max_treedepth, 12)
+})
+
+test_that("rbmi settings stanli cannot honour are refused", {
+  skip_if_not_installed("rbmi")
+  refused <- function(control) {
+    method <- rbmi::method_bayes(n_samples = 10, control = control)
+    rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
+  }
+  expect_error(refused(rbmi::control_bayes(control = list(adapt_gamma = 0.1))), "adapt_gamma")
+  expect_error(refused(rbmi::control_bayes(cores = 2)), "not supported by stanli: cores")
 })

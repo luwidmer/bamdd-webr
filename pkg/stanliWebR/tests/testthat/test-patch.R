@@ -31,3 +31,25 @@ test_that("rstan is patched whenever it is loaded", {
     stanliWebR:::stanli_sampling
   )
 })
+
+test_that("a fingerprint follows a function's code, not its environment", {
+  fingerprint <- stanliWebR:::fingerprint
+  f <- function(x) x + 1
+  expect_identical(fingerprint(f), fingerprint(local(function(x) x + 1)))
+  expect_false(identical(fingerprint(f), fingerprint(function(x) x + 2)))
+})
+
+test_that("rbmi is patched only where its code is the one replaced", {
+  skip_if_not_installed("rbmi")
+  ns <- asNamespace("rbmi")
+  expect_identical(environment(ns$fit_mcmc)$rstan_init, stanliWebR:::rstan_init)
+  patched <- ns$fit_mcmc
+  expect_true(stanliWebR::use_stanli_for_rbmi())
+  expect_identical(body(ns$fit_mcmc), body(patched))
+  expect_error(
+    stanliWebR:::patch_namespace("rbmi", list(fit_mcmc = function() NULL),
+                                 fingerprints = c(fit_mcmc = "0")),
+    "internal fit_mcmc\\(\\) is not the one stanliWebR replaces"
+  )
+  expect_identical(body(ns$fit_mcmc), body(patched))
+})

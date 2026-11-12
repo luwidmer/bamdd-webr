@@ -120,7 +120,10 @@ fit <- brm(time ~ age * sex, data = kidney)   # default backend, sampled by stan
   `adapt_engaged`, and anything else stops with an error rather than being ignored.
 * **rbmi:** `get_stan_model()` only renders the program, and `fit_mcmc()` samples it
   with stanli. rbmi's own draw extraction and diagnostics then run unchanged, on
-  rbmi's Stan program as it ships.
+  rbmi's Stan program as it ships. `control_bayes(control = list(...))` reaches stanli
+  as the brms `control` does. Starting values follow rstan, which ignores rbmi's
+  per-group lists, so with `init = "mmrm"` only `theta` starts from the MMRM fit. The
+  patch stops if rbmi's two replaced functions change in a later release.
 * **RBesT and OncoBayes2:** these ship precompiled models and work without
   stanliWebR (see "Where rstan comes from"). With it, the one `rstan::sampling()`
   call in `gMAP()` and in `blrm_exnex()` runs the same Stan program on stanli instead,

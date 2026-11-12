@@ -32,14 +32,14 @@ require_namespaces <- function(target, pkgs) {
 
 # Replace functions inside a package namespace. Each replacement is evaluated in a
 # child of that namespace, so it calls the package's internals exactly as the
-# original does, plus the stanliWebR helpers it needs.
-patch_namespace <- function(pkg, replacements) {
+# original does, plus the stanliWebR helpers it needs. With `fingerprints`, each
+# original must match the one the replacement was written from.
+patch_namespace <- function(pkg, replacements, fingerprints = NULL) {
   ns <- asNamespace(pkg)
   helpers <- new.env(parent = ns)
   helpers$sample_stanfit <- sample_stanfit
   helpers$rstan_controls <- rstan_controls
   helpers$rstan_init <- rstan_init
-  helpers$per_group_init <- per_group_init
   helpers$stanli_sampling <- stanli_sampling
   attached <- paste0("package:", pkg)
   for (name in names(replacements)) {
@@ -49,6 +49,15 @@ patch_namespace <- function(pkg, replacements) {
     }
     fun <- replacements[[name]]
     environment(fun) <- helpers
+    original <- get(name, envir = ns, inherits = FALSE)
+    if (!is.null(fingerprints) && !identical(body(original), body(fun))) {
+      found <- fingerprint(original)
+      if (!identical(found, fingerprints[[name]])) {
+        stop(pkg, " ", utils::packageVersion(pkg), "'s internal ", name, "() is not the one ",
+             "stanliWebR replaces (fingerprint ", found, "); stanliWebR needs updating for it",
+             call. = FALSE)
+      }
+    }
     utils::assignInNamespace(name, fun, ns = pkg)
     # Attaching copies exports, so a package attached before the patch keeps the old one.
     if (attached %in% search() && exists(name, envir = as.environment(attached), inherits = FALSE)) {
@@ -59,4 +68,12 @@ patch_namespace <- function(pkg, replacements) {
     }
   }
   invisible(TRUE)
+}
+
+# MD5 of a function's deparsed source, which ignores srcrefs and bytecode.
+fingerprint <- function(fun) {
+  file <- tempfile()
+  on.exit(unlink(file))
+  writeLines(deparse(fun), file)
+  unname(tools::md5sum(file))
 }

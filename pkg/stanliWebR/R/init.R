@@ -4,7 +4,8 @@
 # scale, as does a non-negative number. A named list of starting values -- or one
 # per chain -- is applied as rstan applies it: names that are parameters of the
 # model take the values given, names that are not are ignored, and parameters
-# without a value start uniform on (-2, 2) on the unconstrained scale.
+# without a value start uniform on (-2, 2) on the unconstrained scale. Like rstan,
+# a list-valued entry (rbmi's per-group rho = list(DRUG = 0.6, ...)) is ignored.
 rstan_init <- function(init, chains) {
   if (is.null(init)) {
     return(2)
@@ -27,6 +28,7 @@ rstan_init <- function(init, chains) {
     stop("init has ", length(per_chain), " sets of starting values for ", chains,
          " chains", call. = FALSE)
   }
+  per_chain <- lapply(per_chain, Filter, f = Negate(is.list))
   function(model, seed) {
     n <- model$n_unconstrained
     t(vapply(seq_along(per_chain), function(k) {

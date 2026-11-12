@@ -24,6 +24,15 @@ unchanged.
 rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
 MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
 and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
+As in rstan, per-group lists such as AR(1)'s \code{rho} are ignored, so only \code{theta}
+starts from the MMRM fit.
+
+The sampler settings in \code{control_bayes(control = list(...))} reach stanli as
+they would reach rstan: \code{adapt_delta}, \code{max_treedepth}, \code{stepsize}, \code{metric}
+and \code{adapt_engaged}. Anything stanli cannot honour is refused.
+
+The two internals are checked against the rbmi code they were written from, so
+an rbmi release that changes them stops here instead of being silently replaced.
 }
 \examples{
 \dontrun{
