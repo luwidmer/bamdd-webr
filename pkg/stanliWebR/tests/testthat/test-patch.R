@@ -10,6 +10,26 @@ test_that("swap_call() replaces the one call, and patching twice is harmless", {
   expect_identical(swap_call(g, quote(rstan::sampling), quote(stanli_sampling)), g)
 })
 
+test_that("swap_call() also replaces a function taken as a value", {
+  f <- function(x) {
+    fit_fun <- stanli::sample_model
+    fit_fun(x)
+  }
+  g <- swap_call(f, quote(stanli::sample_model), quote(brms_sample_model))
+  expect_match(paste(deparse(body(g)), collapse = "\n"), "fit_fun <- brms_sample_model", fixed = TRUE)
+  expect_identical(swap_call(g, quote(stanli::sample_model), quote(brms_sample_model)), g)
+})
+
+test_that("brms's own stanli backend is the default, sampling through stanliWebR", {
+  skip_if_not_installed("brms")
+  loadNamespace("brms")
+  expect_identical(getOption("brms.backend"), "stanli")
+  fit <- asNamespace("brms")$.fit_model_stanli
+  expect_identical(environment(fit)$brms_sample_model, stanliWebR:::brms_sample_model)
+  code <- paste(deparse(body(fit)), collapse = "\n")
+  expect_no_match(code, "stanli::(sample_model|stanli_model)")
+})
+
 test_that("swap_call() refuses a function that no longer has the call", {
   expect_error(swap_call(function(x) x, quote(rstan::sampling), quote(stanli_sampling)),
                "needs updating")

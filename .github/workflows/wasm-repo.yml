@@ -1,5 +1,5 @@
-# Build the thirteen wasm packages that have no usable upstream build (ten cross-compiled,
-# two first-party, and rbmi from a pinned commit), and publish them as a Release asset
+# Build the fifteen wasm packages that have no usable upstream build (ten cross-compiled,
+# two first-party, and rbmi, brms and future from pinned sources), and publish them as a Release asset
 # that deploy.yml consumes.
 # sass, vroom and mmrm do have upstream builds, but only of unreleased development
 # versions; building the CRAN releases here keeps every package's source, and so its
@@ -10,7 +10,7 @@
 #
 # Runs a handful of times a year, needs no Cloudflare credentials, and opens a pull
 # request with the regenerated lib/MANIFEST.tsv rather than committing it: R CMD INSTALL
-# output is not byte-reproducible, so every rebuild changes all thirteen sha256 sums, and the
+# output is not byte-reproducible, so every rebuild changes all fifteen sha256 sums, and the
 # manifest diff is this project's only drift detection.
 #
 # Nothing here changes when deploy.yml gains its push/pull_request triggers
@@ -94,16 +94,16 @@ jobs:
           r-version: '4.6.0'
           use-public-rspm: true
 
-      # usethis is what RBesT's tools/make-ds.R calls; R CMD INSTALL of pkg/* and of rbmi
-      # needs their Imports.
+      # usethis is what RBesT's tools/make-ds.R calls; R CMD INSTALL of pkg/* and of rbmi,
+      # brms and future needs their Imports.
       - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
         with:
-          packages: any::rstantools, any::usethis, github::r-wasm/rwasm, deps::./pkg/stanliWebR, deps::./pkg/miraiWebR, any::rbmi
+          packages: any::rstantools, any::usethis, github::r-wasm/rwasm, deps::./pkg/stanliWebR, deps::./pkg/miraiWebR, any::rbmi, any::brms, any::future
           dependencies: '"hard"'
 
-      # Before the Docker builds, so a failure here costs minutes rather than hours. rbmi is
-      # pure R, built from the commit pinned in tools/build-first-party.R (UPSTREAM).
-      - name: Build stanliWebR, miraiWebR and rbmi
+      # Before the Docker builds, so a failure here costs minutes rather than hours. rbmi,
+      # brms and future are pure R, built from the sources pinned in tools/upstream.R.
+      - name: Build stanliWebR, miraiWebR, rbmi, brms and future
         run: Rscript tools/build-first-party.R
 
       # data/*.rda and R/sysdata.rda are generated, not tracked, and .onAttach() reads
@@ -324,7 +324,7 @@ jobs:
             smoke test) before this pull request was opened; `deploy.yml` does not run on
             pull requests opened by a workflow.
 
-            Review `lib/MANIFEST.tsv` before merging. The thirteen `local:vendor/wasm-repo`
+            Review `lib/MANIFEST.tsv` before merging. The fifteen `local:vendor/wasm-repo`
             rows are expected to change sha256 on every rebuild; any other movement
             came from `--resolve` re-querying the remote repositories.
           add-paths: |

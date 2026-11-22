@@ -76,8 +76,8 @@ old_options <- 'options(
 )
 
 dir.create(here::here("_brms-cache"), FALSE)'
-new_options <- '# brms keeps its default rstan backend; stanliWebR runs it on stanli, which
-# interprets the Stan program -- there is no C++ toolchain in the browser.
+new_options <- '# stanliWebR makes the stanli backend of brms the default; stanli interprets
+# the Stan program -- there is no C++ toolchain in the browser.
 library(stanliWebR)
 
 # Each chain samples on a webR worker of its own. Needs 5 CPU cores; on fewer, lower

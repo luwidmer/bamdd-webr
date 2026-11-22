@@ -31,8 +31,8 @@ library(ggrepel)
 library(patchwork)
 library(ggdist)
 
-# brms keeps its default rstan backend; stanliWebR runs it on stanli, which
-# interprets the Stan program -- there is no C++ toolchain in the browser.
+# stanliWebR makes the stanli backend of brms the default; stanli interprets
+# the Stan program -- there is no C++ toolchain in the browser.
 library(stanliWebR)
 
 # Each chain samples on a webR worker of its own. Needs 5 CPU cores; on fewer, lower

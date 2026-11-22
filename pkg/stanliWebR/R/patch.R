@@ -2,8 +2,6 @@
 # patch_namespace()), so these names resolve at run time to that package's own
 # internals even though they are not defined here.
 utils::globalVariables(c(
-  # brms
-  "collapse_comma", "repair_stanfit", "stop2", "use_opencl", "use_threading",
   # rbmi
   "as_stan_fragments", "check_mcmc", "complete_control_bayes", "extract_draws",
   "find_stan_file", "fit_mmrm", "get_stan_model", "ife", "prepare_prior_params",
@@ -42,6 +40,8 @@ patch_namespace <- function(pkg, replacements, fingerprints = NULL) {
   helpers$rstan_controls <- rstan_controls
   helpers$rstan_init <- rstan_init
   helpers$stanli_sampling <- stanli_sampling
+  helpers$brms_stanli_model <- brms_stanli_model
+  helpers$brms_sample_model <- brms_sample_model
   attached <- paste0("package:", pkg)
   for (name in names(replacements)) {
     if (!exists(name, envir = ns, mode = "function", inherits = FALSE)) {

@@ -11,7 +11,7 @@ bit	4.6.0	https://repo.r-wasm.org	bit_4.6.0.tgz	9bb31d547e7fdf83ff1f8fc5aaa82038
 bit64	4.8.6	https://repo.r-wasm.org	bit64_4.8.6.tgz	52770de052321f4899c617d210b7baf51a7028ea7b6202e1fbbd86bfa1908e71	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/bit64_4.8.6.tgz
 bitops	1.1-0	https://repo.r-wasm.org	bitops_1.1-0.tgz	31e295ce898989a9393450feaa9f182a7c8de602bc9041a3c3de7112290a6958	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/bitops_1.1-0.tgz
 bridgesampling	1.2-1	https://repo.r-wasm.org	bridgesampling_1.2-1.tgz	d0a83be8829772f3c27f2dab13aa2b8b7d15be7b2590788fe803cb473fa1a375	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/bridgesampling_1.2-1.tgz
-brms	2.23.0	https://repo.r-wasm.org	brms_2.23.0.tgz	88002f16868f0eb712e1eba16b8b81ab4a757a72482cb196273cbce5fa38228a	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/brms_2.23.0.tgz
+brms	2.23.2	local:vendor/wasm-repo	brms_2.23.2.tgz	d6e38845df11baff9254c20d3a2cff1ad136d2d15b247af4bd81b19d15a65188	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/brms_2.23.2.tgz
 Brobdingnag	1.3-1	https://repo.r-wasm.org	Brobdingnag_1.3-1.tgz	cb314c6da774d409a38a7f6996e6a5e9204b4eb8900d52768fe1f77737327f06	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/Brobdingnag_1.3-1.tgz
 bslib	0.12.0	https://repo.r-wasm.org	bslib_0.12.0.tgz	57e5979f17df017b5d9fdc0387b928de9c4e211415f79429ab32bc54cc2da861	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/bslib_0.12.0.tgz
 cachem	1.1.0	https://repo.r-wasm.org	cachem_1.1.0.tgz	7969192f9f44370ed4623bf70a41d24d6945a29309c136f41de4a80b979e02db	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/cachem_1.1.0.tgz
@@ -37,7 +37,7 @@ forcats	1.0.1	https://repo.r-wasm.org	forcats_1.0.1.tgz	80a463ce801987ea71e36df1
 forestplot	3.2.0	https://repo.r-wasm.org	forestplot_3.2.0.tgz	1c3e2409b0e697a43f900100b503c032e4043e3dbb9475019868617804a65013	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/forestplot_3.2.0.tgz
 Formula	1.2-6	https://repo.r-wasm.org	Formula_1.2-6.tgz	2a09a7f9aea2da48c60f3bc1dd21b19d24eaa6312ae2fd5599e73ce670e16308	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/Formula_1.2-6.tgz
 fs	2.1.0	https://repo.r-wasm.org	fs_2.1.0.tgz	c5c986963981c09e40a50cd4ff3b1cc98f2f7758880f7fcc91a71855a96c9d9b	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/fs_2.1.0.tgz
-future	1.76.0	https://repo.r-wasm.org	future_1.76.0.tgz	693e7c28f16a41bf8fcf1ac5d4fc84e436034996b05d183fb27faddf51b81509	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/future_1.76.0.tgz
+future	1.82.0	local:vendor/wasm-repo	future_1.82.0.tgz	1f2ecef6940abba1db2d50b78f6665fe2275610e4b1dde92d90b550fe6883dbc	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/future_1.82.0.tgz
 future.apply	1.20.2	https://repo.r-wasm.org	future.apply_1.20.2.tgz	16d5c2352c1dc789a5fd1bc9075b99551b33e62349153ec39e3ddcec46c96051	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/future.apply_1.20.2.tgz
 generics	0.1.4	https://repo.r-wasm.org	generics_0.1.4.tgz	a9c7ca26beaef02a95fb0c971a9a1a5b8e09db3d99baf17796537d2bf9a396bc	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/generics_0.1.4.tgz
 ggdist	3.3.3	https://repo.r-wasm.org	ggdist_3.3.3.tgz	3c33ecbac100525d55d98c4dfd7fc98c8ed2dc886b7c918c7840e5bca9071871	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/ggdist_3.3.3.tgz
@@ -125,7 +125,7 @@ scales	1.4.0	https://repo.r-wasm.org	scales_1.4.0.tgz	1e3fd9c44c6bba3ea2911ee8a2
 simsurv	1.0.1	https://repo.r-wasm.org	simsurv_1.0.1.tgz	c35ae60c414c0b04a975572335d9a35c823b455f0436808a83a40cb6d56b2846	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/simsurv_1.0.1.tgz
 StanHeaders	2.39.1	local:vendor/wasm-repo	StanHeaders_2.39.1.tgz	95a81287f0088574e805ab2a6598631225308914398b4589af00ff7eec765bd1	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/StanHeaders_2.39.1.tgz
 stanli	0.30.1	https://seantalts.r-universe.dev	stanli_0.30.1.tgz	033b1034cce1be479e3042a98e9ead19fe45bf3be506fdaf652500b3865bb42c	https://seantalts.r-universe.dev/bin/emscripten/contrib/4.6/stanli_0.30.1.tgz
-stanliWebR	0.8.2	local:vendor/wasm-repo	stanliWebR_0.8.2.tgz	495b8c5baa012a02a5b2719a3748df5f0600e5657ecb3ded4b6ef677173fff53	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/stanliWebR_0.8.2.tgz
+stanliWebR	0.9.0	local:vendor/wasm-repo	stanliWebR_0.9.0.tgz	358567fc29f63403755fd92f935d5b5461e011a3910aa3f833c838ed3f80623d	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/stanliWebR_0.9.0.tgz
 statmod	1.5.2	https://repo.r-wasm.org	statmod_1.5.2.tgz	9391546e8e5959c61b48c43e0d9dc92afbbc0198fa3681b611849b440cf4da02	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/statmod_1.5.2.tgz
 stringi	1.8.9	https://repo.r-wasm.org	stringi_1.8.9.tgz	9dbaf879802701c962215cea056873187e4034ea8aa4d9c3309871c3fa190a1c	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/stringi_1.8.9.tgz
 stringr	1.6.0	https://repo.r-wasm.org	stringr_1.6.0.tgz	be6e72ef1c8ddecbf44aa42a7ba7c7a333645e218ab57f92992a8a5b7a4030f3	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/stringr_1.6.0.tgz

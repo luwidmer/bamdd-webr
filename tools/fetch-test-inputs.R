@@ -64,6 +64,8 @@ cache_dir <- file.path(root, "vendor", "testcache")
 test_lib <- file.path(root, "build", "test-library")
 test_src <- file.path(root, "build", "test-sources")
 
+source(file.path(root, "tools", "upstream.R"))
+
 die <- function(...) stop("\n[fetch-test-inputs] ", ..., call. = FALSE)
 say <- function(...) cat("[fetch-test-inputs]", ..., "\n", sep = " ")
 
@@ -131,7 +133,10 @@ pinned_description <- function(row) {
 source_url <- function(row) {
   package <- row$package
   version <- row$version
-  if (grepl("r-universe\\.dev", row$repo)) {
+  if (package %in% names(UPSTREAM)) {
+    # The archive tools/build-first-party.R built the package from.
+    candidates <- UPSTREAM[[package]]$url
+  } else if (grepl("r-universe\\.dev", row$repo)) {
     d <- pinned_description(row)
     if (!is.null(d$RemoteUrl) && !is.null(d$RemoteSha) && identical(d$Version, version) &&
         grepl("^https://github.com/", d$RemoteUrl)) {
@@ -321,6 +326,24 @@ frozen <- function() {
       pkg_dir <- if (nzchar(subdir)) paste0(top, "/", subdir) else top
       wanted <- paste0(pkg_dir, "/", c("tests", INST_TEST_DIRS), "/")
       keep <- listing[Reduce(`|`, lapply(wanted, function(w) startsWith(listing, w)))]
+      # A GitHub archive is not R CMD build output: drop what a release would leave out.
+      ignore_file <- paste0(pkg_dir, "/.Rbuildignore")
+      if (ignore_file %in% listing) {
+        if (utils::untar(dest, files = ignore_file, exdir = work) != 0L) {
+          die("Could not unpack ", ignore_file, " of ", basename(dest))
+        }
+        patterns <- trimws(readLines(file.path(work, ignore_file), warn = FALSE))
+        patterns <- patterns[nzchar(patterns) & !startsWith(patterns, "#")]
+        rel <- sub("/$", "", substring(keep, nchar(pkg_dir) + 2L))
+        # A path is left out when it, or a directory above it, matches.
+        ignored <- vapply(strsplit(rel, "/", fixed = TRUE), function(parts) {
+          prefixes <- vapply(seq_along(parts), function(i) paste(parts[seq_len(i)], collapse = "/"), "")
+          any(vapply(patterns, function(p) any(grepl(p, prefixes, perl = TRUE, ignore.case = TRUE)), NA))
+        }, NA)
+        keep <- keep[!ignored]
+        # Extracting a directory entry would bring back everything under it.
+        keep <- keep[!endsWith(keep, "/")]
+      }
       if (length(keep) && utils::untar(dest, files = keep, exdir = work) != 0L) {
         die("Could not unpack the tests of ", basename(dest))
       }

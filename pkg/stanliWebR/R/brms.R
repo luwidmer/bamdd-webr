@@ -1,33 +1,22 @@
 #' Make brms sample through stanli
 #'
-#' Runs brms's default `"rstan"` backend on stanli: the Stan program brms generates
-#' is interpreted rather than compiled, and the result is an ordinary rstan
-#' `stanfit`. Loading stanliWebR arranges for this to happen whenever brms is
-#' loaded, so calling it by hand is only needed when brms was loaded before
-#' stanliWebR was installed.
+#' brms has a stanli backend of its own, `backend = "stanli"` (paul-buerkner/brms#1966).
+#' Loading stanliWebR makes it brms's default, unless `options(brms.backend =)` is
+#' already set, and adds what webR needs on top. Calling this by hand is only needed
+#' when brms was loaded before stanliWebR was installed.
 #'
 #' @details
-#' Two brms internals are replaced: `.compile_model_rstan`, which only checks and
-#' keeps the Stan code, since stanli builds a model when the data are known; and
-#' `.fit_model_rstan`, which samples with stanli. Nothing else in brms is touched,
-#' so the fitted object, and everything downstream of it, is brms's own. Parameters
-#' brms excludes from the output (the standardised group-level effects `z_*`, for
-#' instance) are dropped as rstan would drop them, and post-processing such as
-#' [brms::posterior_predict()] needs no `save_pars()`. The fit keeps stanli's
-#' model, so [brms::loo_moment_match()] and [brms::bridge_sampler()] evaluate the
-#' log density without recompiling (both need `save_pars(all = TRUE)`, as with
-#' rstan).
+#' Two calls in brms's `.fit_model_stanli()` are replaced, and nothing else in brms is
+#' touched, so `init`, `control` and everything downstream of the fit are brms's own.
+#' `stanli::stanli_model()` builds the model in fast mode when
+#' `options(stanliWebR.fast_math = TRUE)` (see [stanliWebR-package]), and refuses a
+#' model whose transformed parameters and generated quantities stanli cannot compute.
+#' `stanli::sample_model()` samples the chains on webR workers when there are any.
 #'
-#' The NUTS sampler is the only algorithm. Supported `control` entries are
-#' `adapt_delta`, `max_treedepth`, `stepsize`, `metric` (`"diag_e"`, `"dense_e"`
-#' or `"unit_e"`) and `adapt_engaged`; `init` may be `"random"`, `"0"`, a
-#' non-negative radius, or a list of starting values, applied as rstan applies
-#' them. Anything else stops with an error rather than being ignored.
-#'
-#' With `cores` > 1 and webR workers started by `miraiWebR::daemons()`, each
-#' chain is sampled on a worker of its own, with the same random stream it has in
-#' a sequential run, so the fit is identical to the sequential one. Without
-#' workers the chains run one after another, and a message says so.
+#' With `cores` > 1 and webR workers started by `miraiWebR::daemons()`, each chain is
+#' sampled on a worker of its own, with the same random stream it has in a sequential
+#' run, so the fit is identical to the sequential one. Without workers the chains run
+#' one after another, and a message says so.
 #'
 #' @return `TRUE`, invisibly.
 #' @export
@@ -37,80 +26,53 @@
 #' fit <- brms::brm(time ~ age * sex, data = brms::kidney, seed = 1)
 #' }
 use_stanli_for_brms <- function() {
-  require_namespaces("brms", c("brms", "rstan", "stanli"))
-  patch_namespace("brms", list(
-    .compile_model_rstan = stanli_compile_model,
-    .fit_model_rstan = stanli_fit_model
-  ))
+  require_namespaces("brms", c("brms", "stanli"))
+  ns <- asNamespace("brms")
+  if (!exists(".fit_model_stanli", envir = ns, mode = "function", inherits = FALSE)) {
+    stop("brms ", utils::packageVersion("brms"), " has no stanli backend; stanliWebR ",
+         "needs a brms with backend = \"stanli\" (paul-buerkner/brms#1966)", call. = FALSE)
+  }
+  fit <- get(".fit_model_stanli", envir = ns)
+  fit <- swap_call(fit, quote(stanli::stanli_model), quote(brms_stanli_model))
+  fit <- swap_call(fit, quote(stanli::sample_model), quote(brms_sample_model))
+  patch_namespace("brms", list(.fit_model_stanli = fit))
+  if (is.null(getOption("brms.backend"))) {
+    options(brms.backend = "stanli")
+  }
+  invisible(TRUE)
 }
 
-# stanli binds the data when it builds a model, so all that can be done ahead of
-# sampling is to check the code and keep it.
-stanli_compile_model <- function(model, threads, opencl, silent = 1, ...) {
-  stanli::stanli_check_syntax(model)
-  structure(list(model_code = model), class = "stanli_program")
+brms_stanli_model <- function(...) {
+  stanli_model_complete(..., fast_math = fast_math_option())
 }
 
-# As brms's own .fit_model_rstan(), with rstan::sampling() replaced by stanli.
-stanli_fit_model <- function(model, sdata, algorithm, iter, warmup, thin, chains,
-                             cores, threads, opencl, init, exclude, seed, control,
-                             silent, future, ...) {
-  if (!identical(algorithm, "sampling")) {
-    stop2("stanli only samples with NUTS; algorithm = '", algorithm, "' is not supported.")
+# The stanli::sample_model() arguments a run on workers honours.
+worker_sample_args <- c(
+  "chains", "seed", "warmup", "samples", "thin", "delta", "max_depth", "save_warmup",
+  "init", "init_radius", "parallel_chains", "refresh", "threads_per_chain",
+  "fixed_param", "metric", "step_size", "adapt_engaged"
+)
+
+# stanli::sample_model(), with the chains on webR workers when brms asks for cores and
+# workers are running. Defaults are stanli's.
+brms_sample_model <- function(model, ...) {
+  args <- list(...)
+  chains <- args$chains %||% 4
+  if (isTRUE(args$fixed_param) || !use_workers(chains, args$parallel_chains %||% chains)) {
+    return(stanli::sample_model(model, ...))
   }
-  if (isTRUE(future)) {
-    stop2("future = TRUE is not supported by stanli.")
-  }
-  if (use_opencl(opencl)) {
-    stop2("OpenCL is not supported by stanli.")
-  }
-  dots <- list(...)
-  unsupported <- setdiff(names(dots), "refresh")
+  unsupported <- setdiff(names(args), worker_sample_args)
   if (length(unsupported)) {
-    stop2("Sampler argument(s) not supported by stanli: ", collapse_comma(unsupported))
+    stop("Not supported when chains run on webR workers: ",
+         paste(unsupported, collapse = ", "), call. = FALSE)
   }
-  unsupported <- setdiff(names(control), rstan_controls)
-  if (length(unsupported)) {
-    stop2("control entries not supported by stanli: ", collapse_comma(unsupported))
-  }
-  threads <- if (use_threading(threads, force = TRUE)) threads$threads else 1L
-  if (threads > 1L && !stanli::stanli_thread_safe()) {
-    stop2("threading() needs threads, which this stanli runtime does not have. ",
-          "Start webR workers with miraiWebR::daemons() and use 'cores' to run ",
-          "chains in parallel instead.")
-  }
-  # update() passes the fitted model back in instead of a fresh compile.
-  code <- if (inherits(model, "stanli_program")) model$model_code else model@model_code
-  if (is.na(seed)) {
-    seed <- sample.int(.Machine$integer.max, 1L)
-  }
-  if (chains == 0) {
-    # rstan returns a fit without draws that still carries the model, and brms
-    # asks for one that way to refresh a fit's model before loo_moment_match()
-    # or bridge_sampler(). stanli's public API builds that fit from a single
-    # draw, which is then dropped.
-    out <- sample_stanfit(
-      code = code, data = unclass(sdata), chains = 1L, warmup = 0L, samples = 1L,
-      thin = 1L, seed = seed, init = 2, delta = 0.8, max_depth = 10, refresh = 0
-    )
-    out@sim <- list()
-    out@mode <- 2L
-    return(out)
-  }
-  init <- rstan_init(init, chains)
-  if (silent < 2) {
-    message("Start sampling")
-  }
-  out <- sample_stanfit(
-    code = code, data = unclass(sdata), chains = chains, warmup = warmup,
-    samples = iter - warmup, thin = thin, seed = seed, init = init,
-    delta = control$adapt_delta %||% 0.8, max_depth = control$max_treedepth %||% 10,
-    # rstan's default: progress every tenth of the run, unless brms is silenced.
-    refresh = dots$refresh %||% if (silent >= 2) 0 else max(iter %/% 10, 1),
-    threads = threads,
-    cores = cores, pars = exclude, include = FALSE,
-    metric = control$metric, step_size = control$stepsize,
-    adapt_engaged = control$adapt_engaged
+  sample_on_workers(
+    model, code = model$model_code, data = model$source$data_json, chains = chains,
+    seed = args$seed %||% 1, init = args$init %||% args$init_radius %||% 2,
+    warmup = args$warmup %||% 1000, samples = args$samples %||% 1000,
+    thin = args$thin %||% 1, delta = args$delta %||% 0.8,
+    max_depth = args$max_depth %||% 10, threads = model$threads_per_chain,
+    save_warmup = isTRUE(args$save_warmup), fast_math = model$fast_math,
+    controls = Filter(Negate(is.null), args[c("metric", "step_size", "adapt_engaged")])
   )
-  repair_stanfit(out)
 }

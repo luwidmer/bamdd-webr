@@ -36,10 +36,10 @@ R_CONTRIB <- "4.6"
 # crossprod() results on webR's 32-bit size_t (tools/wasm-patches/Matrix_*.patch).
 # Putting it first lets these displace the upstream builds, and nothing else.
 #
-# rbmi is built here too, from a pinned commit (UPSTREAM in tools/build-first-party.R),
-# until a release passes its MMRM starting values in Stan's shapes. seantalts is
-# stanli's author and holds nothing else. brms is CRAN's, from
-# repo.r-wasm.org: none of the universes above it carries brms.
+# rbmi, brms and future are built here too, from the sources pinned in tools/upstream.R:
+# rbmi until a release passes its MMRM starting values in Stan's shapes, brms until one
+# has its stanli backend, and future because brms master needs a newer one than
+# repo.r-wasm.org's. seantalts is stanli's author and holds nothing else.
 # stan-dev is left out on purpose: its .9000 builds of GPL packages (bayesplot, loo)
 # expire, and a served GPL binary must keep its source obtainable. CRAN's are used.
 # Nothing else in any of these universes collides with the closure below.
@@ -51,9 +51,10 @@ REPOS <- c(
   "https://repo.r-wasm.org"
 )
 
-# stanli is the Stan interpreter. stanliWebR is first-party (pkg/stanliWebR); it
-# routes brms's default rstan backend and rbmi::method_bayes() through stanli, which
-# is what makes both usable without a C++ toolchain. rstan stays for the stanfit
+# stanli is the Stan interpreter, and brms has a backend for it. stanliWebR is
+# first-party (pkg/stanliWebR); it makes that backend brms's default and routes
+# rbmi::method_bayes() through stanli, which is what makes both usable without a C++
+# toolchain. rstan stays for the stanfit
 # class that brms and rbmi work with. miraiWebR, also first-party (pkg/miraiWebR),
 # runs tasks and chains on background webR workers.
 #

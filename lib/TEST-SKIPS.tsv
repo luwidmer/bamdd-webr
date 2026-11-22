@@ -15,8 +15,6 @@ bridgesampling	test-stan_bridge_sampler_basic.R	stan_bridge_sampler in multicore
 bridgesampling	test-stan_bridge_sampler_bugs.R	bridge_sampler.stanfit multicore works for one-parameter model.	full	forks (parallel::mcfork); webR has no fork()
 bridgesampling	test-stan_bridge_sampler_bugs.R	subscript out of bounds error	full	the model uses Stan's pre-2.33 array syntax (int N[G]), which stanli does not parse
 bridgesampling	test-stan_bridge_sampler_bugs.R	turtle example	full	the model uses Stan's pre-2.33 array syntax (int y[nobs]), which stanli does not parse
-brms	tests.brmsfit-methods.R	loo has reasonable outputs	full	brms 2.23.0's test reads loo_compare()[2, 1], which loo 2.10 made the model name; fails natively too
-brms	tests.brmsterms.R	brmsterms handles very long RE terms	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
 bslib	test-page.R	page_sidebar()	both	snapshot differs from bslib's recording only in the sidebar icon's SVG style attribute (a dependency's version, not webR)
 callr	test-archs.R	r() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
 callr	test-archs.R	r_bg() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
@@ -227,6 +225,9 @@ future	test-requestNode.R	(script)	full	needs a separate R process (callr/Rscrip
 future	test-sticky_globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future	test-tweak.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future	test-uuid.R	(script)	both	forks (parallel::mcfork); webR has no fork()
+future	test-value-interrupt-cancels-set.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-value.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-worker-connection-leak-on-error.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future.apply	test-future_apply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
 future.apply	test-future_lapply,globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future.apply	test-future_lapply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops

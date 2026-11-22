@@ -29,7 +29,7 @@ the deploy must be fast.
 
 ```
 .github/workflows/wasm-repo.yml   manual; Docker; no Cloudflare credentials
-  clone Novartis/RBesT -> docker compose build -> build thirteen packages
+  clone Novartis/RBesT -> docker compose build -> build fifteen packages
   -> Release asset + PR updating lib/MANIFEST.tsv and lib/WASM_REPO
 
 .github/workflows/deploy.yml      per push
@@ -40,7 +40,7 @@ the deploy must be fast.
 
 ### The wasm package bundle
 
-Thirteen of the 148 packages are built here: rstan, StanHeaders, RBesT, OncoBayes2 and
+Fifteen of the 148 packages are built here: rstan, StanHeaders, RBesT, OncoBayes2 and
 jinjar have no usable WebAssembly build anywhere; sass, vroom and mmrm have upstream
 builds only of unreleased development versions, so their CRAN releases are built
 instead, which keeps every package's source -- and its tests -- pinned to a release
@@ -50,17 +50,17 @@ and vroom -- so `readr::read_csv()` -- fails for want of a thread);
 Matrix's upstream build returns wrong (empty) results on webR's 32-bit `size_t`, so it is
 rebuilt with `tools/wasm-patches/Matrix_<version>.patch`; TMB's upstream build (1.9.11)
 no longer compiles against R 4.6 and is too old for mmrm 0.3, so its CRAN release is
-built and mmrm is compiled against it; all ten are cross-compiled in Docker. stanliWebR and miraiWebR are first-party, and rbmi is built from a pinned commit (`UPSTREAM` in `tools/build-first-party.R`) whose MMRM starting values reach Stan, which no release has yet; those three are pure R. Rebuilding them all takes Docker and about an hour, so the
+built and mmrm is compiled against it; all ten are cross-compiled in Docker. stanliWebR and miraiWebR are first-party. rbmi and brms are built from pinned commits (`tools/upstream.R`): rbmi's MMRM starting values reach Stan, and brms has its own stanli backend, which no release of either has yet; brms needs `future` >= 1.80.0, so CRAN's `future` is built too, repo.r-wasm.org's being older. Those five are pure R. Rebuilding them all takes Docker and about an hour, so the
 deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
 
-* **Produced by `wasm-repo.yml`.** It builds all thirteen, collects them with
+* **Produced by `wasm-repo.yml`.** It builds all fifteen, collects them with
   `tools/vendor-wasm-repo.R` (which also writes the package index) and packs
   `vendor/wasm-repo/` into `wasm-repo-<date>-<sha>.tar.gz`. A verify job unpacks that
   archive, builds and packs the library from it and runs `tools/smoke-test.mjs`. Only
   then does a publish job attach the archive to a GitHub Release of the same name and
   open a pull request that changes two files together:
   * `lib/WASM_REPO`: the Release tag and the sha256 of the archive;
-  * `lib/MANIFEST.tsv`: its thirteen `local:vendor/wasm-repo` rows, one sha256 per package.
+  * `lib/MANIFEST.tsv`: its fifteen `local:vendor/wasm-repo` rows, one sha256 per package.
 * **Every other pinned package rides along.** The same Release carries
   `wasm-repo-<date>-<sha>-packages.tar`: the remote packages of `lib/MANIFEST.tsv`
   exactly as `--resolve` downloaded and hashed them, pinned by `PACKAGES_SHA256` in
@@ -76,7 +76,7 @@ deploy does not do it; it downloads a bundle that `wasm-repo.yml` built once.
   downloads them itself, which needs a public repository. The frozen `build-library.R`
   then checks every package against the manifest, so each one is verified twice.
 * **The two files move in lockstep.** `R CMD INSTALL` is not byte-reproducible, so any
-  local rebuild of one of the thirteen changes its sha256, and a manifest holding that
+  local rebuild of one of the fifteen changes its sha256, and a manifest holding that
   checksum no longer matches the published bundle: the frozen build then fails on it.
   After changing `pkg/*`, a patch in `tools/wasm-patches/` or a pinned version of the
   ten cross-compiled ones, re-run `wasm-repo.yml` and merge its pull request rather than committing a
@@ -323,7 +323,7 @@ against a `PENDING` `lib/WASM_REPO` and fail.
 1. **Do the one-time setup above.**
 2. **Run `wasm-repo.yml` once** and merge the pull request it opens. This needs only
    `GITHUB_TOKEN`, so the heaviest part of the pipeline is proven before any Cloudflare
-   account exists. Review `lib/MANIFEST.tsv` carefully: the thirteen `local:vendor/wasm-repo`
+   account exists. Review `lib/MANIFEST.tsv` carefully: the fifteen `local:vendor/wasm-repo`
    rows change sha256 on every rebuild because `R CMD INSTALL` output is not
    byte-reproducible, and `--resolve` re-queries the three remote repositories, so unrelated
    r-universe movement can appear in the same diff.

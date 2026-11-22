@@ -67,8 +67,9 @@ stanli_sampling <- function(object, data = list(), pars = NA, chains = 4L, iter 
   fit
 }
 
-# Return `fun` with its one call to `from` replaced by a call to `to`. A function
-# that already calls `to` is returned as it is, so patching twice is harmless.
+# Return `fun` with its one use of `from` -- called, or taken as a value, as brms's
+# `fit_fun <- stanli::sample_model` does -- replaced by `to`. A function that already
+# uses `to` is returned as it is, so patching twice is harmless.
 swap_call <- function(fun, from, to) {
   if (!is.function(fun)) {
     stop("function to patch not found; stanliWebR needs updating", call. = FALSE)
@@ -76,6 +77,13 @@ swap_call <- function(fun, from, to) {
   found <- 0L
   done <- 0L
   walk <- function(e) {
+    if (identical(e, from)) {
+      found <<- found + 1L
+      return(to)
+    }
+    if (identical(e, to)) {
+      done <<- done + 1L
+    }
     if (!is.call(e)) {
       return(e)
     }

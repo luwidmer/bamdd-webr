@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 #
 # Build the first-party packages in pkg/ (stanliWebR, miraiWebR), and the pure-R
-# packages pinned to an upstream commit in UPSTREAM, into build/wasm-extra, ready for
+# packages pinned to an upstream source in tools/upstream.R, into build/wasm-extra, ready for
 # tools/vendor-wasm-repo.R.
 #
 # They are pure R, so there is nothing to cross-compile and the host R can build
@@ -25,23 +25,14 @@ say <- function(...) cat("[build-first-party]", ..., "\n", sep = " ")
 # MUST match the R that webR bundles, and R_CONTRIB in tools/build-library.R.
 R_TARGET <- "4.6.0"
 
-# Pure-R packages built from an upstream commit until a release carries what the image
-# needs. rbmi: MMRM starting values in Stan's names and shapes (openpharma/rbmi#609) and
-# two-visit correlation priors (#613), from PR #614. lib/TEST-MANIFEST.tsv pins the same
-# archive as the package's test source.
-UPSTREAM <- list(
-  rbmi = list(
-    url = "https://github.com/openpharma/rbmi/archive/2d7b92b25a69289c2d297aaf65dee55d8d643c6f.tar.gz",
-    sha256 = "1d7e488012927323f71ffc3ef295047af8ecaa939c4db33aff835fc08490d49b"
-  )
-)
-
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 root <- if (length(script_arg) == 1L) {
   dirname(dirname(normalizePath(sub("^--file=", "", script_arg))))
 } else {
   normalizePath(getwd())
 }
+
+source(file.path(root, "tools", "upstream.R"))
 
 target_minor <- paste(unlist(numeric_version(R_TARGET))[1:2], collapse = ".")
 running_minor <- paste(unlist(getRversion())[1:2], collapse = ".")
@@ -77,15 +68,20 @@ r_cmd <- function(args, what) {
 upstream_source <- function(pkg, stage) {
   spec <- UPSTREAM[[pkg]]
   archive <- file.path(stage, "upstream.tar.gz")
-  utils::download.file(spec$url, archive, mode = "wb", quiet = TRUE)
+  for (url in spec$url) {
+    ok <- tryCatch(utils::download.file(url, archive, mode = "wb", quiet = TRUE) == 0L,
+                   error = function(e) FALSE, warning = function(w) FALSE)
+    if (ok) break
+  }
+  if (!ok) die(pkg, ": cannot download any of ", paste(spec$url, collapse = ", "))
   got <- unname(tools::sha256sum(archive))
   if (!identical(got, spec$sha256)) {
-    die(pkg, ": ", spec$url, " has sha256 ", got, ", expected ", spec$sha256)
+    die(pkg, ": ", url, " has sha256 ", got, ", expected ", spec$sha256)
   }
   src <- file.path(stage, "src")
   utils::untar(archive, exdir = src)
   dir <- list.dirs(src, recursive = FALSE)
-  if (length(dir) != 1L) die(pkg, ": expected one directory in ", spec$url)
+  if (length(dir) != 1L) die(pkg, ": expected one directory in ", url)
   found <- read.dcf(file.path(dir, "DESCRIPTION"), fields = "Package")[1, 1]
   if (found != pkg) die(spec$url, " is the source of ", found, ", not ", pkg)
   if (dir.exists(file.path(dir, "src")) && length(list.files(file.path(dir, "src")))) {

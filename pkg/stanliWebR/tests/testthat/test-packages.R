@@ -7,11 +7,21 @@ test_that("brms samples with stanli, keeps the model and refreshes it", {
   fit <- brms::brm(time ~ age + (1 | patient), data = brms::kidney, chains = 2, iter = 400,
                    seed = 1, refresh = 0, silent = 2, save_pars = brms::save_pars(all = TRUE))
   expect_s3_class(fit, "brmsfit")
+  expect_identical(fit$backend, "stanli")
   expect_true(any(grepl("^z_", brms::variables(fit))))
   expect_identical(fit$fit@stan_args[[1]]$sampler_t, "NUTS(diag_e)")
   expect_true(is.finite(suppressMessages(brms::bridge_sampler(fit, silent = TRUE))$logml))
   again <- update(fit, iter = 300, refresh = 0, silent = 2, seed = 2)
   expect_s3_class(again, "brmsfit")
+})
+
+test_that("brms builds its stanli model in fast mode when asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  withr::local_options(stanliWebR.fast_math = TRUE)
+  fit <- brms::brm(y ~ 1, data = data.frame(y = c(-1, 0.5, 2)), chains = 1, iter = 200,
+                   seed = 1, refresh = 0, silent = 2)
+  expect_true(fit$fit@.MISC$stanli_model$fast_math)
 })
 
 test_that("RBesT's gMAP() samples with stanli", {
