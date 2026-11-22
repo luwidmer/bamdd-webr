@@ -367,7 +367,7 @@ mmrm	test-interop-car.R	car emits a message about mmrm registration on load	full
 mmrm	test-skipping.R	get_compiler works as expected	both	calls system(); unsupported under Emscripten
 mmrm	test-skipping.R	is_using_clang gives the same information as R_compiled_by in recent R versions	both	calls system(); unsupported under Emscripten
 mmrm	test-skipping.R	is_using_clang works as expected	both	calls system(); unsupported under Emscripten
-OncoBayes2	test-blrm_exnex.R	blrm_exnex exits gracefully with an error message when Stan does not sample with rstan	full	stanliWebR rejects the test's deliberately misspelled control entry (aBapt_delta) up front with its own message; under rstan sampling fails and OncoBayes2 says 'Calling Stan failed.'
+OncoBayes2	test-blrm_exnex.R	(crash)	full	compiled models are unsupported once stanli is loaded: 'update.blrmfit grows the data set' calls rstan::log_prob() on sampling(OncoBayes2:::stanmodels$blrm_exnex, chains = 0), which crashes (memory access out of bounds) because libstanli.so exports the Stan Math it binds to (README, "Where rstan comes from")
 otel	test-api-dev.R	dev API is up to date	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
 otel	test-defaults.R	setup_default_logger_provider	full	needs Suggests package otelsdk, not in the test library
 otel	test-defaults.R	setup_default_meter_provider	full	needs Suggests package otelsdk, not in the test library
@@ -506,7 +506,8 @@ purrr	test-map.R	requires output be length 1 and have common type	full	snapshot 
 QuickJSR	test_io_wrappers.R	(file)	both	calls system(); unsupported under Emscripten
 QuickJSR	test_os_exec_fork_safety.R	(file)	both	calls system(); unsupported under Emscripten
 QuickJSR	test_stdio_file_safety.R	(file)	both	calls system(); unsupported under Emscripten
-RBesT	test-gMAP-s2z.R	a degenerate intercept prior is rejected rather than silently wrong	full	stanli raises the model's transformed-data reject() as an R error, with the expected message; rstan prints it, and the test captures the printed message
+RBesT	test-gMAP-s2z-center.R	(crash)	full	compiled models are unsupported once stanli is loaded: 'center = 0 reproduces the shipped non-centered parametrization' calls rstan::log_prob() on sampling(RBesT:::stanmodels$gMAP, chains = 0), which crashes (memory access out of bounds) because libstanli.so exports the Stan Math it binds to (README, "Where rstan comes from")
+RBesT	test-gMAP-s2z.R	(crash)	full	compiled models are unsupported once stanli is loaded: 'the Stan s2z target matches an independent implementation' calls rstan::log_prob() on sampling(RBesT:::stanmodels$gMAP, chains = 0), which crashes (memory access out of bounds) because libstanli.so exports the Stan Math it binds to (README, "Where rstan comes from")
 rbmi	test-analyse.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
 rbmi	test-draws.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
 rbmi	test-expand.R	fill_locf - works with data.frames & Dates	full	needs Suggests package lubridate, not in the test library

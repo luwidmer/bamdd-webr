@@ -40,8 +40,11 @@ the deploy must be fast.
 
 ### The wasm package bundle
 
-Fifteen of the 148 packages are built here: rstan, StanHeaders, RBesT, OncoBayes2 and
-jinjar have no usable WebAssembly build anywhere; sass, vroom and mmrm have upstream
+Fifteen of the 148 packages are built here: rstan, RBesT, OncoBayes2 and
+jinjar have no usable WebAssembly build anywhere, and StanHeaders none of the release
+rstan needs (rstan from a stan-dev/rstan commit and StanHeaders from CRAN, both pinned in
+`tools/upstream.R` and fed to the RBesT harness by `tools/wasm-patches/BesT-webr-harness.patch`);
+sass, vroom and mmrm have upstream
 builds only of unreleased development versions, so their CRAN releases are built
 instead, which keeps every package's source -- and its tests -- pinned to a release
 (sass and vroom with the webR fixes rwasm applies for repo.r-wasm.org, as

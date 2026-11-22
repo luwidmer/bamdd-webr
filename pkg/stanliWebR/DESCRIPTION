@@ -1,6 +1,6 @@
 Package: stanliWebR
 Title: Sample brms and rbmi Models with stanli in WebAssembly
-Version: 0.9.0
+Version: 0.10.0
 Authors@R: c(person("Lukas", "Widmer", email = "lukas_andreas.widmer@novartis.com",
                     role = c("aut", "cre")),
              person("Novartis", "Pharma AG", role = "cph"))

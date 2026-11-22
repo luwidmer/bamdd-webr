@@ -20,3 +20,35 @@ UPSTREAM <- list(
     sha256 = "30a6eeb5289f70f81f86eb2d379caba5cf36604299e689907d92710c45f7e946"
   )
 )
+
+# The Stan pair the RBesT harness cross-compiles (tools/wasm-patches/BesT-webr-harness.patch)
+# and tools/build-wasm-pkg.sh builds StanHeaders from. rstan: develop of stan-dev/rstan, as
+# rstan >= 2.36 has no CRAN release; `subdir` is the package inside the archive. StanHeaders:
+# CRAN's current release, newer than develop's 2.39.0.9000.
+STAN <- list(
+  rstan = list(
+    version = "2.39.0.9000",
+    url = "https://github.com/stan-dev/rstan/archive/6d858e0a7e16931334f7dd4e84270ee504a0852f.tar.gz",
+    sha256 = "26fe605899c65df2f78ffc09443fab0db343d9e8441fa840ce3754c549b2ba62",
+    subdir = "rstan/rstan"
+  ),
+  StanHeaders = list(
+    version = "2.39.1.1",
+    url = c("https://cloud.r-project.org/src/contrib/StanHeaders_2.39.1.1.tar.gz",
+            "https://cloud.r-project.org/src/contrib/Archive/StanHeaders/StanHeaders_2.39.1.1.tar.gz"),
+    sha256 = "025e433e64f94667f3649466a8c2d45da64af05308e884959dea09b71eada706"
+  )
+)
+
+# `Rscript tools/upstream.R --env`: the STAN pins as KEY=value lines, for the harness's
+# docker compose build (eval "$(...)" locally, >> "$GITHUB_ENV" in CI).
+if (identical(commandArgs(trailingOnly = TRUE), "--env")) {
+  writeLines(c(
+    paste0("RBEST_RSTAN_URL=", STAN$rstan$url),
+    paste0("RBEST_RSTAN_SHA256=", STAN$rstan$sha256),
+    paste0("RBEST_RSTAN_SUBDIR=", STAN$rstan$subdir),
+    paste0("RBEST_RSTAN_VERSION=", STAN$rstan$version),
+    paste0("RBEST_STANHEADERS_VERSION=", STAN$StanHeaders$version),
+    paste0("RBEST_STANHEADERS_SHA256=", STAN$StanHeaders$sha256)
+  ))
+}

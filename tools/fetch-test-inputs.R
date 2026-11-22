@@ -136,6 +136,12 @@ source_url <- function(row) {
   if (package %in% names(UPSTREAM)) {
     # The archive tools/build-first-party.R built the package from.
     candidates <- UPSTREAM[[package]]$url
+  } else if (package %in% names(STAN)) {
+    # The pinned source the RBesT harness built it from.
+    pin <- STAN[[package]]
+    candidates <- paste0(pin$url, if (!is.null(pin$subdir)) paste0("#", pin$subdir))
+    for (url in candidates) if (exists_url(strip_fragment(url))) return(url)
+    return(NA_character_)
   } else if (grepl("r-universe\\.dev", row$repo)) {
     d <- pinned_description(row)
     if (!is.null(d$RemoteUrl) && !is.null(d$RemoteSha) && identical(d$Version, version) &&

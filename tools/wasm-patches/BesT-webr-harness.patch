@@ -1,0 +1,151 @@
+diff --git a/tools/webr/docker/Dockerfile b/tools/webr/docker/Dockerfile
+index 453a055..a8a2a96 100644
+--- a/tools/webr/docker/Dockerfile
++++ b/tools/webr/docker/Dockerfile
+@@ -163,6 +163,21 @@ RUN R -q -f /usr/local/bin/install-rwasm.R
+ 
+ COPY --from=webrtools patch-stanheaders.R /usr/local/bin/patch-stanheaders.R
+ 
++# webr-for-brms: pinned Stan sources (its tools/upstream.R); empty = derive as below.
++# Kept in the image: fetch-wasm-deps.R reads RBEST_STANHEADERS_VERSION at run time.
++ARG RBEST_RSTAN_URL=""
++ARG RBEST_RSTAN_SHA256=""
++ARG RBEST_RSTAN_SUBDIR=""
++ARG RBEST_RSTAN_VERSION=""
++ARG RBEST_STANHEADERS_VERSION=""
++ARG RBEST_STANHEADERS_SHA256=""
++ENV RBEST_RSTAN_URL=${RBEST_RSTAN_URL} \
++    RBEST_RSTAN_SHA256=${RBEST_RSTAN_SHA256} \
++    RBEST_RSTAN_SUBDIR=${RBEST_RSTAN_SUBDIR} \
++    RBEST_RSTAN_VERSION=${RBEST_RSTAN_VERSION} \
++    RBEST_STANHEADERS_VERSION=${RBEST_STANHEADERS_VERSION} \
++    RBEST_STANHEADERS_SHA256=${RBEST_STANHEADERS_SHA256}
++
+ # The wasm cross-compile runs `R CMD INSTALL` under *host* R, so LinkingTo
+ # headers are resolved from the host library. rstan/StanHeaders come from CRAN,
+ # at versions derived from what repo.r-wasm.org publishes so that the host
+diff --git a/tools/webr/docker/compose.yaml b/tools/webr/docker/compose.yaml
+index 349c04d..aaf8f8a 100644
+--- a/tools/webr/docker/compose.yaml
++++ b/tools/webr/docker/compose.yaml
+@@ -52,6 +52,13 @@ services:
+         # broken image with nothing in this repository having changed. Bump
+         # deliberately, and re-run `make webr-verify` when you do.
+         RWASM_REF: ${RWASM_REF:-cf3e363ab38b5d6b8e36bb6ca65e3d671c7a6623}
++        # webr-for-brms: `Rscript tools/upstream.R --env` there.
++        RBEST_RSTAN_URL: ${RBEST_RSTAN_URL:-}
++        RBEST_RSTAN_SHA256: ${RBEST_RSTAN_SHA256:-}
++        RBEST_RSTAN_SUBDIR: ${RBEST_RSTAN_SUBDIR:-}
++        RBEST_RSTAN_VERSION: ${RBEST_RSTAN_VERSION:-}
++        RBEST_STANHEADERS_VERSION: ${RBEST_STANHEADERS_VERSION:-}
++        RBEST_STANHEADERS_SHA256: ${RBEST_STANHEADERS_SHA256:-}
+         APT_PROXY: ${APT_PROXY:-}
+         http_proxy: ${http_proxy:-}
+         https_proxy: ${https_proxy:-}
+diff --git a/tools/webr/docker/fetch-wasm-deps.R b/tools/webr/docker/fetch-wasm-deps.R
+index c4f978a..29f6c66 100644
+--- a/tools/webr/docker/fetch-wasm-deps.R
++++ b/tools/webr/docker/fetch-wasm-deps.R
+@@ -38,6 +38,17 @@ contrib_path <- function(repo) {
+   file.path(repo, "bin", "emscripten", "contrib", r_mm)
+ }
+ 
++## webr-for-brms: a pinned StanHeaders (RBEST_STANHEADERS_VERSION) has no published
++## wasm binary, so it is cross-compiled beforehand into a local repo looked up first.
++local_wasm <- "/out/local-wasm"
++if (nzchar(Sys.getenv("RBEST_STANHEADERS_VERSION"))) {
++  if (!file.exists(file.path(contrib_path(local_wasm), "PACKAGES"))) {
++    stop("RBEST_STANHEADERS_VERSION is set, but ", contrib_path(local_wasm),
++         " has no package index: cross-compile StanHeaders into it first")
++  }
++  wasm_repos <- c(local = paste0("file://", local_wasm), wasm_repos)
++}
++
+ say <- function(...) message("[fetch-wasm-deps] ", ...)
+ 
+ ## StanHeaders is the one package whose wasm binary must be the *same release*
+diff --git a/tools/webr/docker/install-host-deps.R b/tools/webr/docker/install-host-deps.R
+index cbbb892..fb40f2b 100644
+--- a/tools/webr/docker/install-host-deps.R
++++ b/tools/webr/docker/install-host-deps.R
+@@ -96,11 +96,23 @@ stan_versions <- c(
+   StanHeaders = indexed_version("StanHeaders", wasm_contrib, "wasm"),
+   rstan = indexed_version("rstan", cran_contrib, "CRAN source")
+ )
++
++## webr-for-brms: pinned versions override the derived ones; StanHeaders is then
++## cross-compiled from the same CRAN release (fetch-wasm-deps.R, local repo).
++pin <- function(name) Sys.getenv(paste0("RBEST_", name))
++if (nzchar(pin("STANHEADERS_VERSION"))) {
++  stan_versions[["StanHeaders"]] <- pin("STANHEADERS_VERSION")
++}
++if (nzchar(pin("RSTAN_URL"))) {
++  stan_versions[["rstan"]] <- pin("RSTAN_VERSION")
++}
+ say(
+   "StanHeaders ", stan_versions[["StanHeaders"]],
+-  " (the wasm binary published for R ", r_mm, ")"
++  if (nzchar(pin("STANHEADERS_VERSION"))) " (pinned)" else
++    paste0(" (the wasm binary published for R ", r_mm, ")")
+ )
+-say("rstan ", stan_versions[["rstan"]], " (current on CRAN)")
++say("rstan ", stan_versions[["rstan"]],
++    if (nzchar(pin("RSTAN_URL"))) paste0(" (pinned: ", pin("RSTAN_URL"), ")") else " (current on CRAN)")
+ 
+ ## A CRAN source tarball has exactly two plausible homes: the current release
+ ## under src/contrib, a superseded one under src/contrib/Archive/<pkg>/.
+@@ -136,12 +148,42 @@ tarball_description <- function(tarball) {
+   read.dcf(file.path(td, description))
+ }
+ 
++## webr-for-brms: rstan from a pinned archive of its git repository, whose package
++## directory is not at the top, so it is turned into a source tarball first.
++build_pinned_rstan <- function(dest) {
++  archive <- file.path(dirname(dest), "rstan-upstream.tar.gz")
++  say("downloading rstan: ", pin("RSTAN_URL"))
++  utils::download.file(pin("RSTAN_URL"), archive, mode = "wb", quiet = TRUE)
++  got <- unname(tools::sha256sum(archive))
++  if (!identical(got, pin("RSTAN_SHA256"))) {
++    stop("rstan archive has sha256 ", got, ", expected ", pin("RSTAN_SHA256"))
++  }
++  src <- file.path(dirname(dest), "rstan-upstream")
++  untar(archive, exdir = src)
++  pkg_dir <- file.path(list.dirs(src, recursive = FALSE), pin("RSTAN_SUBDIR"))
++  if (length(pkg_dir) != 1L || !file.exists(file.path(pkg_dir, "DESCRIPTION"))) {
++    stop("no package at ", pin("RSTAN_SUBDIR"), " in ", pin("RSTAN_URL"))
++  }
++  old <- setwd(dirname(dest))
++  on.exit(setwd(old))
++  status <- system2(file.path(R.home("bin"), "R"),
++                    c("CMD", "build", "--no-build-vignettes", "--no-manual", shQuote(pkg_dir)))
++  if (!identical(as.integer(status), 0L) || !file.exists(dest)) {
++    stop("R CMD build of ", pkg_dir, " did not produce ", basename(dest))
++  }
++}
++
+ download_stan <- function(source, dir) {
+   dest <- file.path(
+     dir,
+     paste0(source$package, "_", source$version, ".tar.gz")
+   )
+   ok <- FALSE
++  if (identical(source$package, "rstan") && nzchar(pin("RSTAN_URL"))) {
++    build_pinned_rstan(dest)
++    ok <- TRUE
++    source$urls <- character()
++  }
+   for (url in source$urls) {
+     say("downloading ", source$package, " ", source$version, ": ", url)
+     status <- tryCatch(
+@@ -163,6 +205,11 @@ download_stan <- function(source, dir) {
+       paste(source$urls, collapse = "\n  ")
+     )
+   }
++  if (identical(source$package, "StanHeaders") && nzchar(pin("STANHEADERS_SHA256")) &&
++      !identical(unname(tools::sha256sum(dest)), pin("STANHEADERS_SHA256"))) {
++    stop("StanHeaders ", source$version, " has sha256 ", tools::sha256sum(dest),
++         ", expected ", pin("STANHEADERS_SHA256"))
++  }
+   desc <- tarball_description(dest)
+   if (!identical(unname(desc[1, "Package"]), source$package) ||
+       !identical(unname(desc[1, "Version"]), source$version)) {

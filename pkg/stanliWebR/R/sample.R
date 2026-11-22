@@ -67,9 +67,7 @@ stan_data <- function(data) {
 # stanli can build a model without its transformed parameters and generated
 # quantities -- when its interpreter fails on them too -- and then only warns, so the
 # fit would silently lack variables the caller's code looks for. stanli 0.24.0 did
-# this for OncoBayes2's combination models; 0.25.0 computes them. Kept as a guard:
-# refuse such a model; callers that have a compiled model to fall back on catch the
-# condition's class.
+# this for OncoBayes2's combination models; 0.25.0 computes them. Kept as a guard.
 stanli_model_complete <- function(...) {
   withCallingHandlers(
     stanli::stanli_model(...),
@@ -79,7 +77,8 @@ stanli_model_complete <- function(...) {
         stop(structure(class = c("stanliWebR_incomplete_model", "error", "condition"), list(
           message = paste0(
             "stanli cannot compute this model's transformed parameters and generated ",
-            "quantities, so its draws would lack them. stanli says:\n", msg
+            "quantities, so its draws would lack them. This is a stanli limitation; please ",
+            "report the model at https://github.com/seantalts/stanli/issues. stanli says:\n", msg
           ),
           call = NULL
         )))

@@ -59,7 +59,7 @@ See [LICENSE](LICENSE) and [pkg/stanliWebR/inst/LICENSE.md](pkg/stanliWebR/inst/
 | Development servers | [serve.py](serve.py) (stdlib only), [serve.R](serve.R) (needs `httpuv`) — exist solely to send COOP/COEP | GPL-3.0-or-later |
 | Build scripts | `tools/fetch-webr.sh`, `fetch-ui-libs.sh`, `fetch-wasm-repo.sh`, `build-library.R`, `pack-library.R`, `build-first-party.R`, `build-wasm-pkg.{R,sh}`, `vendor-wasm-repo.R`, `convert-bamdd.R`, `convert-bamdd-slides.R`, `make-dist.sh`, `deploy.sh` | GPL-3.0-or-later |
 | Deployment config | [_headers](_headers) (COOP/COEP for Cloudflare Pages), `.github/workflows/{wasm-repo,deploy}.yml`, [tools/smoke-test.mjs](tools/smoke-test.mjs) | GPL-3.0-or-later |
-| `stanliWebR` R package | [pkg/stanliWebR](pkg/stanliWebR) 0.9.0 — makes brms's own stanli backend the default, runs `rbmi::method_bayes()`, `RBesT::gMAP()`, `OncoBayes2::blrm_exnex()` and `rstan::stan_model()` programs on stanli; with `cores` > 1, one chain per webR worker, brms's included | Apache-2.0 |
+| `stanliWebR` R package | [pkg/stanliWebR](pkg/stanliWebR) 0.10.0 — makes brms's own stanli backend the default, runs `rbmi::method_bayes()`, `RBesT::gMAP()`, `OncoBayes2::blrm_exnex()` and `rstan::stan_model()` programs on stanli; with `cores` > 1, one chain per webR worker, brms's included | Apache-2.0 |
 | `miraiWebR` R package | [pkg/miraiWebR](pkg/miraiWebR) 0.1.3 — a subset of the `mirai` API, and a `future` backend, on background webR workers started by `js/workers.js`; no code from `mirai` | Apache-2.0 |
 | Patches | `tools/wasm-patches/jinjar_0.3.2.patch` (backport of nlohmann/json PR #3082, v3.10.4, MIT, for libc++), `tools/wasm-patches/webr-tbb-stubs.cpp` (TBB no-ops, from RBesT, GPL (>= 3)) | upstream terms |
 | Examples | `workspace/webr-examples/`: `brms-kidney.R`, `stanli-eight-schools.R`, `rbmi-bayes-stanli.R`, `reproducibility.R`, `parallel.R` | GPL-3.0-or-later |
@@ -69,7 +69,7 @@ See [LICENSE](LICENSE) and [pkg/stanliWebR/inst/LICENSE.md](pkg/stanliWebR/inst/
 
 | Component | Version / state | Origin | Notes |
 | --- | --- | --- | --- |
-| RBesT build harness | `v1.12-0` tag | `github.com/Novartis/RBesT`, `tools/webr/docker` | public; cloned to `vendor/BesT/` purely to supply the Emscripten cross-compilation image for `rstan` and `StanHeaders`; GPL (>= 3). Not the source of `RBesT` itself, which is taken from CRAN |
+| RBesT build harness | `v1.12-0` tag, patched by `tools/wasm-patches/BesT-webr-harness.patch` | `github.com/Novartis/RBesT`, `tools/webr/docker` | public; cloned to `vendor/BesT/` purely to supply the Emscripten cross-compilation image for `rstan` and `StanHeaders`; the patch makes it take the Stan sources pinned in `tools/upstream.R`; GPL (>= 3). Not the source of `RBesT` itself, which is taken from CRAN |
 | bamdd Leiden 2026 workshop | fetched by [tools/convert-bamdd.R](tools/convert-bamdd.R) and [tools/convert-bamdd-slides.R](tools/convert-bamdd-slides.R) | `github.com/Novartis/bamdd`, `workshops/leiden2026` | GPL-2; converted into `workspace/` |
 | `vendor/wasm-repo/` | CRAN-like wasm repo, 7 packages | built here (§5) | resolved *first* by `build-library.R` |
 | `vendor/pkgcache/` | downloaded `.tgz` files | the repos in §6 | build cache, not served |
@@ -80,20 +80,20 @@ Built with the Emscripten image from `Novartis/RBesT`'s `tools/webr/docker`, che
 at `vendor/BesT/`, and collected into
 `vendor/wasm-repo/` by [tools/vendor-wasm-repo.R](tools/vendor-wasm-repo.R). These are
 not committed, so a build has to reproduce them first and therefore does
-need Docker. Every input is public: five packages come from CRAN sources (`RBesT`,
-`OncoBayes2` and `jinjar` via [tools/build-wasm-pkg.sh](tools/build-wasm-pkg.sh), `rstan`
-and `StanHeaders` via the harness), `stanliWebR` and
+need Docker. Every input is public: four packages come from CRAN sources (`RBesT`,
+`OncoBayes2`, `jinjar` and `StanHeaders` via [tools/build-wasm-pkg.sh](tools/build-wasm-pkg.sh)),
+`rstan` from a pinned GitHub commit via the harness, `stanliWebR` and
 `miraiWebR` from [pkg/](pkg) via [tools/build-first-party.R](tools/build-first-party.R),
 and the harness from GitHub.
 
 | Package | Version | Licence | Why it is built here |
 | --- | --- | --- | --- |
-| `rstan` | 2.32.7 | GPL (>= 3) | the only upstream wasm build (2.39.0.9000) fails to load its `.so` |
-| `StanHeaders` | 2.32.10 | BSD-3-Clause | built with the Intel TBB entry points stubbed out (`inst/webr/tbb-stubs.cpp`) |
+| `rstan` | 2.39.0.9000 | GPL (>= 3) | built from stan-dev/rstan@6d858e0 (develop): rstan >= 2.36 has no CRAN release, and the only upstream wasm build (r-universe's) fails to load its `.so` |
+| `StanHeaders` | 2.39.1.1 | BSD-3-Clause | CRAN's release, cross-compiled here (repo.r-wasm.org has 2.39.1); built with the Intel TBB entry points stubbed out (`inst/webr/tbb-stubs.cpp`) |
 | `RBesT` | 1.12-0 | GPL (>= 3) | its Stan model is an Rcpp module in its own `.so`; needs a real `rstan`. Built from the CRAN release with `WASM_PKG_STAN=1`, which drops the native TBB linkage `wasm-ld` cannot use |
 | `OncoBayes2` | 0.10-0 | GPL (>= 3) | same rstantools construction as `RBesT`, and built the same way with `WASM_PKG_STAN=1` |
 | `jinjar` | 0.3.2 | MIT | no wasm build anywhere; vendored inja/nlohmann does not compile under libc++ |
-| `stanliWebR` | 0.9.0 | Apache-2.0 | first-party, built from `pkg/stanliWebR` |
+| `stanliWebR` | 0.10.0 | Apache-2.0 | first-party, built from `pkg/stanliWebR` |
 | `miraiWebR` | 0.1.3 | Apache-2.0 | first-party, built from `pkg/miraiWebR` |
 | `rbmi` | 1.7.1.9000 | Apache-2.0 (>= 2) | built from openpharma/rbmi@2d7b92b (PR #614), whose MMRM starting values reach Stan; no release has them yet |
 | `brms` | 2.23.2 | GPL-2 | built from paul-buerkner/brms@426188c (master), which has the stanli backend (#1966); no release has it yet |
@@ -240,15 +240,15 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `rlang` | 1.3.0 | repo.r-wasm.org | MIT |
 | `rmarkdown` | 2.32 | repo.r-wasm.org | GPL-3 |
 | `rprojroot` | 2.1.1 | repo.r-wasm.org | MIT |
-| `rstan` | 2.32.7 | vendor/wasm-repo | GPL (>= 3) |
+| `rstan` | 2.39.0.9000 | vendor/wasm-repo | GPL (>= 3) |
 | `rstantools` | 2.7.1 | repo.r-wasm.org | GPL (>= 3) |
 | `S7` | 0.2.2 | repo.r-wasm.org | MIT |
 | `sass` | 0.4.10.9000 | repo.r-wasm.org | MIT |
 | `scales` | 1.4.0 | repo.r-wasm.org | MIT |
 | `simsurv` | 1.0.1 | repo.r-wasm.org | GPL (>= 3) |
-| `StanHeaders` | 2.39.1 | vendor/wasm-repo | BSD-3-Clause |
+| `StanHeaders` | 2.39.1.1 | vendor/wasm-repo | BSD-3-Clause |
 | `stanli` | 0.30.1 | seantalts* | BSD-3-Clause |
-| `stanliWebR` | 0.9.0 | vendor/wasm-repo | Apache-2.0 |
+| `stanliWebR` | 0.10.0 | vendor/wasm-repo | Apache-2.0 |
 | `statmod` | 1.5.2 | repo.r-wasm.org | GPL-2 or GPL-3 |
 | `stringi` | 1.8.9 | repo.r-wasm.org | file LICENSE (BSD-style + ICU) |
 | `stringr` | 1.6.0 | repo.r-wasm.org | MIT |

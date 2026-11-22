@@ -46,9 +46,8 @@ test_that("OncoBayes2's combination models sample on stanli with all their outpu
   skip_on_cran()
   skip_if_not_installed("OncoBayes2")
   withr::local_package("OncoBayes2")
-  # stanli 0.24.0 lost their transformed parameters and generated quantities, which
-  # sent them to rstan's compiled model, or in webR stopped them; 0.25.0 computes them.
-  # The fallback would produce the same variables, so record whether it was taken.
+  # stanli 0.24.0 lost their transformed parameters and generated quantities;
+  # 0.25.0 computes them. Record whether stanliWebR refused the model.
   refused <- FALSE
   complete <- stanliWebR:::stanli_model_complete
   local_mocked_bindings(
@@ -70,6 +69,16 @@ test_that("a program stanli cannot fully compute stops rather than losing output
   local_mocked_bindings(stanli_model_complete = function(...) stop(err), .package = "stanliWebR")
   m <- rstan::stan_model(model_code = normal_code)
   expect_error(quiet_sampling(m, chains = 1, iter = 100, seed = 1), class = "stanliWebR_incomplete_model")
+})
+
+test_that("a precompiled model stanli cannot fully compute stops, without rstan", {
+  err <- structure(class = c("stanliWebR_incomplete_model", "error", "condition"),
+                   list(message = "incomplete", call = NULL))
+  local_mocked_bindings(stanli_model_complete = function(...) stop(err), .package = "stanliWebR")
+  compiled <- methods::new("stanmodel", model_name = "normal", model_code = normal_code)
+  expect_error(stanliWebR:::stanli_sampling(compiled, data = normal_data, chains = 1, iter = 100,
+                                            seed = 1, refresh = 0),
+               class = "stanliWebR_incomplete_model")
 })
 
 test_that("rbmi's Bayesian imputation samples with stanli", {
