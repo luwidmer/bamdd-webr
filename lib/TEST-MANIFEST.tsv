@@ -146,7 +146,7 @@ src	R6	2.6.1	59c6eba8b1b912eb7e104f65053235604be853425ee67c152ac4e86a1f2073b4	ht
 src	rappdirs	0.3.4	2320ebc9ef3b1a32a1e63f94a6ce2c1c34d66782221a6531e786804f681abc66	https://cloud.r-project.org/src/contrib/rappdirs_0.3.4.tar.gz
 src	RBesT	1.12-0	95dc0557c0a01115d8e97008b8e09281c3fe9d568afd878347d0e3cd2e761239	https://cloud.r-project.org/src/contrib/RBesT_1.12-0.tar.gz
 src	rbibutils	2.4.1	da313d920a0f35ffdf30a54929ba8904b2b5a0d7f11a519db8674148129c8f32	https://cloud.r-project.org/src/contrib/rbibutils_2.4.1.tar.gz
-src	rbmi	1.7.0	bc3fe27692ab4af1afc27eeea8cc81656d1f1b537b072dfba084efa812eef289	https://github.com/insightsengineering/rbmi/archive/11dc355b54e394ae47c15bb304e6bc39581b2de0.tar.gz
+src	rbmi	1.7.1.9000	1d7e488012927323f71ffc3ef295047af8ecaa939c4db33aff835fc08490d49b	https://github.com/openpharma/rbmi/archive/2d7b92b25a69289c2d297aaf65dee55d8d643c6f.tar.gz
 src	RColorBrewer	1.1-3	4f42f5423c45688b39f492c7892d93f37b4541831c8ffb140364d2bd89031ac0	https://cloud.r-project.org/src/contrib/RColorBrewer_1.1-3.tar.gz
 src	Rcpp	1.1.2	2746cf2fb188e5f0a84dbf5c8f68915b54564ed33e5754572f174e7b32e7f4f3	https://cloud.r-project.org/src/contrib/Rcpp_1.1.2.tar.gz
 src	RcppParallel	5.1.11-2	350d013d62cd80175e1b13fd5bbf973755e331a5d4d4590a163778a24b27980b	https://cloud.r-project.org/src/contrib/Archive/RcppParallel/RcppParallel_5.1.11-2.tar.gz
@@ -165,8 +165,8 @@ src	sass	0.4.10	4adb4c243f74d811276529e346deaa064bce28dbfbb837208fc85f2c47b79b30
 src	scales	1.4.0	d55ef5f08c92652d7a95cfa27584024723ab17873f1b2577dd488cb7c883ceee	https://cloud.r-project.org/src/contrib/scales_1.4.0.tar.gz
 src	simsurv	1.0.1	6ee9c14d40f104ae626e24103560d1532403361c5ca3e0c022b49f5871b610b1	https://cloud.r-project.org/src/contrib/simsurv_1.0.1.tar.gz
 src	StanHeaders	2.39.1	db87db967b6c908d1bf841cc667c3298648b067b060c3395ebc288287eec206b	https://cloud.r-project.org/src/contrib/StanHeaders_2.39.1.tar.gz
-src	stanli	0.25.0	2a159ca1e085007a14b6d2ea6ce276e1836ab0347bc04ee76ee3c59f18890694	https://github.com/seantalts/stanli/archive/bc66380ed8f4bccf3ad21c189fed95d804c6ccde.tar.gz#r
-src	stanliWebR	0.8.1	-	local:pkg/stanliWebR
+src	stanli	0.30.1	0bcd5576cd51c674eb91fd6fca1fb08e4d69d993e8d8e23a89c0e1f877204c97	https://github.com/seantalts/stanli/archive/f63191b993477cee4391742ca7d32d4ee5402f5a.tar.gz#r
+src	stanliWebR	0.8.2	-	local:pkg/stanliWebR
 src	statmod	1.5.2	5f83d82043c5e26f1048fc0139580da1b7e40becf95fb4cb26ed3afcd46a581d	https://cloud.r-project.org/src/contrib/statmod_1.5.2.tar.gz
 src	stringi	1.8.9	427fcebd281d7ea850becce75e0807576dd394a723a814b2d487419b93275a33	https://cloud.r-project.org/src/contrib/stringi_1.8.9.tar.gz
 src	stringr	1.6.0	24f2fc5df980a7eb888659e22b9744d2316c558624015c7a7cd8c3ce3e370064	https://cloud.r-project.org/src/contrib/stringr_1.6.0.tar.gz

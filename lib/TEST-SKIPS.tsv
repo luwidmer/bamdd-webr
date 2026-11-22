@@ -575,15 +575,12 @@ rstantools	test-rstan_config.R	(file)	both	needs Suggests package usethis, not i
 rstantools	test-rstan_create_package.R	(file)	both	needs Suggests package usethis, not in the test library
 S7	test-external-generic.R	new_method works with both hard and soft dependencies	both	needs a C toolchain to install source packages
 sass	test-font-objects.R	font_google(local = TRUE) basically works	full	needs network access
-stanli	test-cstanfit.R	serialized CmdStan-style methods load without either Stan frontend or runtime	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-ecosystem-registration.R	optional generics dispatch with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-fast-math.R	fast_math is off by default and opt-in per model	both	stanli's wasm runtime is built without threads
-stanli	test-posterior-ecosystem.R	saved fits retain the workflow in a fresh R session	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-rfit.R	native fit methods never load RStan or require a model runtime	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-live.R	a fresh session restores subclass draws and reports a missing handle	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-registration.R	a conflicting stanfit class does not prevent native APIs from loading	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-registration.R	optional S4 methods register with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit.R	serialized model-dependent calls fail safely without a live handle	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-install-dev.R	"latest" is still refused	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before refusing "latest"
+stanli	test-install-dev.R	installing dev replaces the pinned runtime and records its tag	both	stanli's wasm build bundles its runtime, which stanli_runtime_path() prefers to the download cache the test sets up
+stanli	test-install-dev.R	installing into a session that has a runtime loaded says to restart	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before downloading or warning
+stanli	test-install-dev.R	on Windows, replacing a loaded runtime stops before downloading	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before downloading or refusing
+stanli	test-install-dev.R	the pinned runtime is found first, then the dev one	both	stanli's wasm build bundles its runtime, which stanli_runtime_path() prefers to the download cache the test sets up
+stanli	test-subprocess-guard.R	subprocess tests skip where R cannot start another process	both	expects subprocess_available() to be TRUE; webR has no processes, which is why stanli's other subprocess tests skip
 stringr	test-sub.R	bad vectorisation gives informative error	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
 tibble	test-vignette-digits.R	digits vignette	full	needs a separate R process (callr/Rscript); webR has no processes
 tibble	test-vignette-extending.R	extending vignette	full	needs a separate R process (callr/Rscript); webR has no processes
