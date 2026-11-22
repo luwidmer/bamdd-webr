@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 #
-# Build the first-party packages in pkg/ (stanliWebR, miraiWebR) into
-# build/wasm-extra, ready for tools/vendor-wasm-repo.R.
+# Build the first-party packages in pkg/ (stanliWebR, miraiWebR), and the pure-R
+# packages pinned to an upstream commit in UPSTREAM, into build/wasm-extra, ready for
+# tools/vendor-wasm-repo.R.
 #
 # They are pure R, so there is nothing to cross-compile and the host R can build
 # them directly -- unlike jinjar and friends, which need tools/build-wasm-pkg.sh and
@@ -11,7 +12,7 @@
 # way every cross-compiled package in the image does, and refuses to run unless the
 # host matches on the minor version, which is what actually governs compatibility.
 #
-#   Rscript tools/build-first-party.R [package ...]   # default: every package in pkg/
+#   Rscript tools/build-first-party.R [package ...]   # default: pkg/* and UPSTREAM
 #   Rscript tools/vendor-wasm-repo.R      # fold them into vendor/wasm-repo
 #   Rscript tools/build-library.R         # unpack the pinned library
 #   Rscript tools/pack-library.R          # rebuild lib/library.tar.gz
@@ -23,6 +24,17 @@ say <- function(...) cat("[build-first-party]", ..., "\n", sep = " ")
 
 # MUST match the R that webR bundles, and R_CONTRIB in tools/build-library.R.
 R_TARGET <- "4.6.0"
+
+# Pure-R packages built from an upstream commit until a release carries what the image
+# needs. rbmi: MMRM starting values in Stan's names and shapes (openpharma/rbmi#609) and
+# two-visit correlation priors (#613), from PR #614. lib/TEST-MANIFEST.tsv pins the same
+# archive as the package's test source.
+UPSTREAM <- list(
+  rbmi = list(
+    url = "https://github.com/openpharma/rbmi/archive/2d7b92b25a69289c2d297aaf65dee55d8d643c6f.tar.gz",
+    sha256 = "1d7e488012927323f71ffc3ef295047af8ecaa939c4db33aff835fc08490d49b"
+  )
+)
 
 script_arg <- grep("^--file=", commandArgs(), value = TRUE)
 root <- if (length(script_arg) == 1L) {
@@ -42,7 +54,8 @@ if (!identical(running_minor, target_minor)) {
 
 packages <- commandArgs(trailingOnly = TRUE)
 if (!length(packages)) {
-  packages <- basename(dirname(Sys.glob(file.path(root, "pkg", "*", "DESCRIPTION"))))
+  packages <- c(basename(dirname(Sys.glob(file.path(root, "pkg", "*", "DESCRIPTION")))),
+                names(UPSTREAM))
 }
 
 extra_dir <- file.path(root, "build", "wasm-extra")
@@ -53,27 +66,59 @@ dir.create(extra_dir, recursive = TRUE, showWarnings = FALSE)
 # reads Meta/package.rds rather than the DESCRIPTION file, so both have to be stamped.
 stamp <- function(x) sub("^(Built: )?R [0-9.]+;", paste0("\\1R ", R_TARGET, ";"), x)
 
+r_cmd <- function(args, what) {
+  out <- system2(file.path(R.home("bin"), "R"), c("CMD", args), stdout = TRUE, stderr = TRUE)
+  if (!is.null(attr(out, "status"))) die(what, " failed:\n", paste(out, collapse = "\n"))
+  out
+}
+
+# The source package of an UPSTREAM entry: the archive, checked against its sha256, then
+# `R CMD build` so that .Rbuildignore applies as it does for a release.
+upstream_source <- function(pkg, stage) {
+  spec <- UPSTREAM[[pkg]]
+  archive <- file.path(stage, "upstream.tar.gz")
+  utils::download.file(spec$url, archive, mode = "wb", quiet = TRUE)
+  got <- unname(tools::sha256sum(archive))
+  if (!identical(got, spec$sha256)) {
+    die(pkg, ": ", spec$url, " has sha256 ", got, ", expected ", spec$sha256)
+  }
+  src <- file.path(stage, "src")
+  utils::untar(archive, exdir = src)
+  dir <- list.dirs(src, recursive = FALSE)
+  if (length(dir) != 1L) die(pkg, ": expected one directory in ", spec$url)
+  found <- read.dcf(file.path(dir, "DESCRIPTION"), fields = "Package")[1, 1]
+  if (found != pkg) die(spec$url, " is the source of ", found, ", not ", pkg)
+  if (dir.exists(file.path(dir, "src")) && length(list.files(file.path(dir, "src")))) {
+    die(pkg, " has compiled code; build it with tools/build-wasm-pkg.sh instead")
+  }
+  old <- setwd(stage)
+  on.exit(setwd(old))
+  r_cmd(c("build", "--no-build-vignettes", "--no-manual", shQuote(dir)), paste("R CMD build", pkg))
+  file.path(stage, Sys.glob(paste0(pkg, "_*.tar.gz")))
+}
+
 build_one <- function(pkg) {
-  src_dir <- file.path(root, "pkg", pkg)
-  if (!file.exists(file.path(src_dir, "DESCRIPTION"))) die("No package source at ", src_dir)
-
-  version <- read.dcf(file.path(src_dir, "DESCRIPTION"), fields = "Version")[1, 1]
-  tgz <- paste0(pkg, "_", version, ".tgz")
-
   stage <- file.path(tempdir(), paste0(pkg, "-build"))
   unlink(stage, recursive = TRUE)
   lib <- file.path(stage, "lib")
   dir.create(lib, recursive = TRUE)
 
+  src <- if (pkg %in% names(UPSTREAM)) upstream_source(pkg, stage) else file.path(root, "pkg", pkg)
+  if (!pkg %in% names(UPSTREAM) && !file.exists(file.path(src, "DESCRIPTION"))) {
+    die("No package source at ", src)
+  }
+
   out <- system2(
     file.path(R.home("bin"), "R"),
-    c("CMD", "INSTALL", shQuote(paste0("--library=", lib)), shQuote(src_dir)),
+    c("CMD", "INSTALL", shQuote(paste0("--library=", lib)), shQuote(src)),
     stdout = TRUE, stderr = TRUE
   )
   installed <- file.path(lib, pkg)
   if (!dir.exists(installed)) {
     die("R CMD INSTALL ", pkg, " failed:\n", paste(out, collapse = "\n"))
   }
+  version <- read.dcf(file.path(installed, "DESCRIPTION"), fields = "Version")[1, 1]
+  tgz <- paste0(pkg, "_", version, ".tgz")
 
   dcf_path <- file.path(installed, "DESCRIPTION")
   dcf <- readLines(dcf_path)

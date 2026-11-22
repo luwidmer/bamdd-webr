@@ -73,7 +73,7 @@ test_that("rbmi's Bayesian imputation samples with stanli", {
   }
 })
 
-test_that("rbmi's AR(1) and CS models start from the MMRM fit where rstan would", {
+test_that("rbmi's AR(1) and CS models sample with init = \"mmrm\"", {
   skip_on_cran()
   skip_if_not_installed("rbmi")
   for (covariance in c("ar1", "cs")) {
@@ -85,6 +85,32 @@ test_that("rbmi's AR(1) and CS models start from the MMRM fit where rstan would"
       d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
       expect_s3_class(d, "draws")
     }
+  }
+})
+
+test_that("every MMRM estimate reaches stanli once rbmi passes them in Stan's shapes", {
+  skip_on_cran()
+  # openpharma/rbmi#609; earlier versions pass lists, which are ignored as rstan ignores them.
+  skip_if_not_installed("rbmi", "1.7.1.9000")
+  given <- list()
+  unconstrain <- stanli::unconstrain
+  local_mocked_bindings(
+    unconstrain = function(model, values, ...) {
+      given[[length(given) + 1L]] <<- names(values)
+      unconstrain(model, values, ...)
+    },
+    .package = "stanli"
+  )
+  expected <- list(c("ar1", "default", "theta var_const rho"), c("us", "default", "theta Sigma"),
+                   c("us", "lkj", "theta vars corr_chol"))
+  for (e in expected) {
+    given <- list()
+    method <- rbmi::method_bayes(
+      n_samples = 10, covariance = e[1], prior_cov = e[2], same_cov = FALSE,
+      control = rbmi::control_bayes(warmup = 50, thin = 1, seed = 5, init = "mmrm")
+    )
+    suppressWarnings(rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE))
+    expect_identical(paste(given[[1]], collapse = " "), e[3], label = paste(e[1:2], collapse = "/"))
   }
 })
 

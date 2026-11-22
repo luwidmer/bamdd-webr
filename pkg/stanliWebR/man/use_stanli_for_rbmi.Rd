@@ -24,8 +24,9 @@ unchanged.
 rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
 MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
 and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
-As in rstan, per-group lists such as AR(1)'s \code{rho} are ignored, so only \code{theta}
-starts from the MMRM fit.
+As in rstan, list-valued starting values are ignored. rbmi 1.7.1 and earlier pass
+the covariance estimates as per-group lists, so only \code{theta} starts from the MMRM
+fit; from openpharma/rbmi#609 on they come as arrays, and every parameter does.
 
 The sampler settings in \code{control_bayes(control = list(...))} reach stanli as
 they would reach rstan: \code{adapt_delta}, \code{max_treedepth}, \code{stepsize}, \code{metric}

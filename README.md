@@ -121,9 +121,11 @@ fit <- brm(time ~ age * sex, data = kidney)   # default backend, sampled by stan
 * **rbmi:** `get_stan_model()` only renders the program, and `fit_mcmc()` samples it
   with stanli. rbmi's own draw extraction and diagnostics then run unchanged, on
   rbmi's Stan program as it ships. `control_bayes(control = list(...))` reaches stanli
-  as the brms `control` does. Starting values follow rstan, which ignores rbmi's
-  per-group lists, so with `init = "mmrm"` only `theta` starts from the MMRM fit. The
-  patch stops if rbmi's two replaced functions change in a later release.
+  as the brms `control` does. Starting values follow rstan, which ignores list-valued
+  ones. The image's rbmi, built from openpharma/rbmi@2d7b92b (PR #614), passes its MMRM
+  estimates in Stan's names and shapes, so with `init = "mmrm"` every parameter starts
+  from the MMRM fit; with rbmi 1.7.1 and earlier only `theta` does. The patch stops if
+  rbmi's two replaced functions change in a later release.
 * **RBesT and OncoBayes2:** these ship precompiled models and work without
   stanliWebR (see "Where rstan comes from"). With it, the one `rstan::sampling()`
   call in `gMAP()` and in `blrm_exnex()` runs the same Stan program on stanli instead,
@@ -261,7 +263,7 @@ interpreted by stanli instead (see stanliWebR above).
 
 Needs R (for the build scripts only), `bash` and `curl`.
 
-**No build outputs are committed.** `vendor/` is ignored in full, so the twelve wasm
+**No build outputs are committed.** `vendor/` is ignored in full, so the thirteen wasm
 packages built here are absent and `build-library.R` fails loudly until they are
 rebuilt. Every input is public: RBesT, OncoBayes2, rstan, StanHeaders, jinjar, sass,
 vroom, mmrm, Matrix and TMB are all on CRAN; `tools/build-wasm-pkg.sh` cross-compiles RBesT,
@@ -274,10 +276,12 @@ empty `crossprod()` results for an `RsparseMatrix`), and TMB, whose upstream bui
 (1.9.11) is too old to compile mmrm against, the build harness of
 [`Novartis/RBesT`](https://github.com/Novartis/RBesT) (`tools/webr/docker`, cloned at
 `vendor/BesT`) cross-compiles rstan and StanHeaders and supplies the Emscripten image
-`build-wasm-pkg.sh` uses, and stanliWebR and miraiWebR are in `pkg/` here. Rebuilding
-everything needs Docker; only the first-party packages, which are pure R, do not.
+`build-wasm-pkg.sh` uses, and stanliWebR and miraiWebR are in `pkg/` here. rbmi is
+built from the commit pinned in `tools/build-first-party.R` (`UPSTREAM`) until a release
+carries its starting-value fix. Rebuilding everything needs Docker; only the pure-R
+packages (stanliWebR, miraiWebR, rbmi) do not.
 
-Without Docker, download the twelve as the bundle published by `wasm-repo.yml` and pinned
+Without Docker, download the thirteen as the bundle published by `wasm-repo.yml` and pinned
 in `lib/WASM_REPO`; [DEPLOY.md](DEPLOY.md) ("The wasm package bundle") explains how it is
 built and verified. This works once a bundle has been published, i.e. once
 `lib/WASM_REPO` no longer says `PENDING`:
@@ -287,12 +291,12 @@ git clone https://github.com/luwidmer/bamdd-webr.git && cd bamdd-webr
 Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscripten
 bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
-bash    tools/fetch-wasm-repo.sh     # the twelve above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
+bash    tools/fetch-wasm-repo.sh     # the thirteen above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
 Rscript tools/build-library.R        # 142 wasm packages -> build/library (~286 MB)
 Rscript tools/pack-library.R         # -> lib/library.tar.gz (~138 MB)
 ```
 
-To build the twelve yourself instead, skip `fetch-wasm-repo.sh` and follow the three
+To build the thirteen yourself instead, skip `fetch-wasm-repo.sh` and follow the three
 "Rebuilding ..." sections below and "Cross-compiling any other package" for the CRAN
 ones, then `Rscript tools/vendor-wasm-repo.R`.
 
@@ -581,7 +585,7 @@ breaks a pinned sha256, and `--frozen` then fails loudly. That is correct behavi
 it means the real reproducible artifacts are the downloaded tarballs, which
 `wasm-repo.yml` publishes as the `-packages.tar` asset of the pinned Release
 (`fetch-wasm-repo.sh` unpacks them into `vendor/pkgcache/`), and the built
-`lib/library.tar.gz`. The twelve in `vendor/wasm-repo/` are not committed, so they have
+`lib/library.tar.gz`. The thirteen in `vendor/wasm-repo/` are not committed, so they have
 to be fetched or rebuilt before a `--frozen` run can succeed; `build-library.R` names
 the missing file and the script to run.
 

@@ -48,7 +48,7 @@ test_that("rbmi is patched only where its code is the one replaced", {
   expect_identical(body(ns$fit_mcmc), body(patched))
   expect_error(
     stanliWebR:::patch_namespace("rbmi", list(fit_mcmc = function() NULL),
-                                 fingerprints = c(fit_mcmc = "0")),
+                                 fingerprints = list(fit_mcmc = c("0", "1"))),
     "internal fit_mcmc\\(\\) is not the one stanliWebR replaces"
   )
   expect_identical(body(ns$fit_mcmc), body(patched))

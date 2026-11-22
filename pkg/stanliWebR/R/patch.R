@@ -32,8 +32,9 @@ require_namespaces <- function(target, pkgs) {
 
 # Replace functions inside a package namespace. Each replacement is evaluated in a
 # child of that namespace, so it calls the package's internals exactly as the
-# original does, plus the stanliWebR helpers it needs. With `fingerprints`, each
-# original must match the one the replacement was written from.
+# original does, plus the stanliWebR helpers it needs. With `fingerprints`, a list of
+# the accepted fingerprints by name, each original must be one the replacement was
+# written from.
 patch_namespace <- function(pkg, replacements, fingerprints = NULL) {
   ns <- asNamespace(pkg)
   helpers <- new.env(parent = ns)
@@ -52,7 +53,7 @@ patch_namespace <- function(pkg, replacements, fingerprints = NULL) {
     original <- get(name, envir = ns, inherits = FALSE)
     if (!is.null(fingerprints) && !identical(body(original), body(fun))) {
       found <- fingerprint(original)
-      if (!identical(found, fingerprints[[name]])) {
+      if (!found %in% fingerprints[[name]]) {
         stop(pkg, " ", utils::packageVersion(pkg), "'s internal ", name, "() is not the one ",
              "stanliWebR replaces (fingerprint ", found, "); stanliWebR needs updating for it",
              call. = FALSE)

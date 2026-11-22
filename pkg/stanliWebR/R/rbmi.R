@@ -14,8 +14,9 @@
 #' rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
 #' MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
 #' and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
-#' As in rstan, per-group lists such as AR(1)'s `rho` are ignored, so only `theta`
-#' starts from the MMRM fit.
+#' As in rstan, list-valued starting values are ignored. rbmi 1.7.1 and earlier pass
+#' the covariance estimates as per-group lists, so only `theta` starts from the MMRM
+#' fit; from openpharma/rbmi#609 on they come as arrays, and every parameter does.
 #'
 #' The sampler settings in `control_bayes(control = list(...))` reach stanli as
 #' they would reach rstan: `adapt_delta`, `max_treedepth`, `stepsize`, `metric`
@@ -37,10 +38,12 @@ use_stanli_for_rbmi <- function() {
   patch_namespace("rbmi", list(
     get_stan_model = stanli_get_stan_model,
     fit_mcmc = stanli_fit_mcmc
-  ), fingerprints = c(
-    # rbmi 1.7.0 and 1.7.1
+  ), fingerprints = list(
     get_stan_model = "70f31d5f1bc6b492653f12d69e877df7",
-    fit_mcmc = "7095cb6e113f2f4aebbdcd6a35121325"
+    fit_mcmc = c(
+      "7095cb6e113f2f4aebbdcd6a35121325", # rbmi 1.7.0, 1.7.1
+      "29a77c51955af609c95ca0aa4cf2ec43"  # openpharma/rbmi@2d7b92b: also stops on a failed sampler
+    )
   ))
 }
 
