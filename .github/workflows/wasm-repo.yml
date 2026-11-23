@@ -44,7 +44,7 @@ on:
         default: 1.7-6
       webr_tag:
         description: must match WEBR_VERSION in tools/fetch-webr.sh
-        default: v0.6.0
+        default: v0.6.1
 
 permissions:
   contents: read

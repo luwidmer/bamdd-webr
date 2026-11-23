@@ -19,7 +19,7 @@ options(timeout = max(1800L, getOption("timeout")))
 
 ## ---------------------------------------------------------------- configuration
 
-# MUST match the R version bundled by vendor/webr (webR 0.6.0 -> R 4.6.0).
+# MUST match the R version bundled by vendor/webr (webR 0.6.1 -> R 4.6.0).
 # Wasm binaries built for a different R version will not load.
 R_CONTRIB <- "4.6"
 

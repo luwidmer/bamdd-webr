@@ -295,7 +295,7 @@ built and verified. This works once a bundle has been published, i.e. once
 ```sh
 git clone https://github.com/luwidmer/bamdd-webr.git && cd bamdd-webr
 Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscripten
-bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
+bash    tools/fetch-webr.sh          # webR 0.6.1 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
 bash    tools/fetch-wasm-repo.sh     # the fifteen above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
 Rscript tools/build-library.R        # 142 wasm packages -> build/library (~286 MB)
@@ -588,7 +588,7 @@ committed; `--resolve` is the only mode that reads it, and it fails loudly askin
 `lib/MANIFEST.tsv` and needs no index at all.
 
 To bump webR, edit `WEBR_VERSION` in `tools/fetch-webr.sh`. **The R version webR bundles
-must match `R_CONTRIB` in `tools/build-library.R`** (webR 0.6.0 → R 4.6.0 → `contrib/4.6`).
+must match `R_CONTRIB` in `tools/build-library.R`** (webR 0.6.1 → R 4.6.0 → `contrib/4.6`).
 Wasm binaries built for another R version will not load; `fetch-webr.sh` prints the
 bundled version so you can check.
 

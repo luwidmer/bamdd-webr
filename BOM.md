@@ -18,8 +18,8 @@ and the version pins in [tools/fetch-webr.sh](tools/fetch-webr.sh),
 
 | Component | Version | Source | Licence | Role |
 | --- | --- | --- | --- | --- |
-| webR | 0.6.0 | `github.com/r-wasm/webr` release tarball → `vendor/webr/` | webR's own sources MIT; the distribution embeds R, so GPL-2 \| GPL-3 governs what is served | R compiled to WebAssembly; `R.wasm`, `R.js`, `webr.mjs`, worker, VFS |
-| R | 4.6.0 | bundled inside webR 0.6.0 | GPL-2 \| GPL-3 | the interpreter itself |
+| webR | 0.6.1 | `github.com/r-wasm/webr` release tarball → `vendor/webr/` | webR's own sources MIT; the distribution embeds R, so GPL-2 \| GPL-3 governs what is served | R compiled to WebAssembly; `R.wasm`, `R.js`, `webr.mjs`, worker, VFS |
+| R | 4.6.0 | bundled inside webR 0.6.1 | GPL-2 \| GPL-3 | the interpreter itself |
 | stanli | 0.30.1 | `seantalts.r-universe.dev` | BSD-3-Clause | Stan *interpreter* — replaces the absent C++ toolchain; `brm()`, `rbmi::method_bayes()`, `RBesT::gMAP()` and `OncoBayes2::blrm_exnex()` sample with it through `stanliWebR` |
 | Emscripten | 5.0.7 | `emscripten/emsdk` image (build-time only) | MIT / NCSA | the ABI everything above is compiled to |
 
@@ -281,7 +281,7 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `bash`, `curl`, `tar` | system | fetch scripts |
 | Docker + `rocker/r-ver` | 4.6.0 | cross-compile harness, host R stage |
 | `emscripten/emsdk` | 5.0.7 | cross-compile harness, must match webR's Emscripten |
-| `ghcr.io/r-wasm/webr` | v0.6.0 (amd64 image, never executed) | cross-compile harness, supplies the arch-independent webR tree |
+| `ghcr.io/r-wasm/webr` | v0.6.1 (amd64 image, never executed) | cross-compile harness, supplies the arch-independent webR tree |
 | Node.js | 22+ | `tools/smoke-test.mjs` only |
 | `playwright` | 1.56.1 (Apache-2.0) | the browser check in `tools/smoke-test.mjs`; never served |
 | `wrangler` | 4.147.0 (MIT OR Apache-2.0) | `tools/deploy.sh`, the manual Cloudflare deploy; never served |

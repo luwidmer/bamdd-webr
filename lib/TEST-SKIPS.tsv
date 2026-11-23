@@ -583,6 +583,7 @@ stanli	test-install-dev.R	installing into a session that has a runtime loaded sa
 stanli	test-install-dev.R	on Windows, replacing a loaded runtime stops before downloading	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before downloading or refusing
 stanli	test-install-dev.R	the pinned runtime is found first, then the dev one	both	stanli's wasm build bundles its runtime, which stanli_runtime_path() prefers to the download cache the test sets up
 stanli	test-subprocess-guard.R	subprocess tests skip where R cannot start another process	both	expects subprocess_available() to be TRUE; webR has no processes, which is why stanli's other subprocess tests skip
+stanli	test-stanfit.R	rstan, bayesplot and loo consume the native in-memory fit	both	expects rstan's loo.stanfit() to apply r_eff, but rstan 2.39 (stan-dev/rstan "Add r_eff argument to loo method") defaults to r_eff = FALSE; with r_eff = TRUE the result matches stanli's exactly. Not a webR difference
 stringr	test-sub.R	bad vectorisation gives informative error	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
 tibble	test-vignette-digits.R	digits vignette	full	needs a separate R process (callr/Rscript); webR has no processes
 tibble	test-vignette-extending.R	extending vignette	full	needs a separate R process (callr/Rscript); webR has no processes
