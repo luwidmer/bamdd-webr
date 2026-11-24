@@ -114,7 +114,7 @@ fit <- brm(time ~ age * sex, data = kidney)   # brms's stanli backend
   its `init` and `control` handling and everything downstream of the fit are brms's
   own; see `?brm`. stanliWebR replaces two calls in it: `stanli::sample_model()`, so
   that chains sample on webR workers (below), and `stanli::stanli_model()`, so that
-  `stanliWebR.fast_math` applies and a model stanli cannot fully compute is refused.
+  `stanliWebR.fast_math` applies.
   brms master needs `future` >= 1.80.0, so the image's `future` 1.82.0 is built here
   from CRAN's source, as repo.r-wasm.org has 1.76.0.
 * **rbmi:** `get_stan_model()` only renders the program, and `fit_mcmc()` samples it

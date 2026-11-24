@@ -46,39 +46,10 @@ test_that("OncoBayes2's combination models sample on stanli with all their outpu
   skip_on_cran()
   skip_if_not_installed("OncoBayes2")
   withr::local_package("OncoBayes2")
-  # stanli 0.24.0 lost their transformed parameters and generated quantities;
-  # 0.25.0 computes them. Record whether stanliWebR refused the model.
-  refused <- FALSE
-  complete <- stanliWebR:::stanli_model_complete
-  local_mocked_bindings(
-    stanli_model_complete = function(...) {
-      withCallingHandlers(complete(...), stanliWebR_incomplete_model = function(e) refused <<- TRUE)
-    },
-    .package = "stanliWebR"
-  )
   combo3 <- suppressWarnings(OncoBayes2::example_model("combo3", silent = TRUE))
-  expect_false(refused)
   vars <- posterior::variables(combo3$blrmfit$draws)
   expect_true(any(startsWith(vars, "tau_log_beta[")))
   expect_true(any(startsWith(vars, "beta_group[")))
-})
-
-test_that("a program stanli cannot fully compute stops rather than losing outputs", {
-  err <- structure(class = c("stanliWebR_incomplete_model", "error", "condition"),
-                   list(message = "incomplete", call = NULL))
-  local_mocked_bindings(stanli_model_complete = function(...) stop(err), .package = "stanliWebR")
-  m <- rstan::stan_model(model_code = normal_code)
-  expect_error(quiet_sampling(m, chains = 1, iter = 100, seed = 1), class = "stanliWebR_incomplete_model")
-})
-
-test_that("a precompiled model stanli cannot fully compute stops, without rstan", {
-  err <- structure(class = c("stanliWebR_incomplete_model", "error", "condition"),
-                   list(message = "incomplete", call = NULL))
-  local_mocked_bindings(stanli_model_complete = function(...) stop(err), .package = "stanliWebR")
-  compiled <- methods::new("stanmodel", model_name = "normal", model_code = normal_code)
-  expect_error(stanliWebR:::stanli_sampling(compiled, data = normal_data, chains = 1, iter = 100,
-                                            seed = 1, refresh = 0),
-               class = "stanliWebR_incomplete_model")
 })
 
 test_that("rbmi's Bayesian imputation samples with stanli", {
@@ -87,8 +58,12 @@ test_that("rbmi's Bayesian imputation samples with stanli", {
   for (same_cov in c(TRUE, FALSE)) {
     method <- rbmi::method_bayes(n_samples = 10, same_cov = same_cov,
                                  control = rbmi::control_bayes(warmup = 100, thin = 2, seed = 5))
-    d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
+    out <- capture.output(
+      d <- rbmi::draws(data = rbmi_data(), vars = rbmi_vars(), method = method, quiet = TRUE)
+    )
     expect_s3_class(d, "draws")
+    # Too few warmup iterations for Stan's adaptation windows: a notice rbmi's quiet hides.
+    expect_identical(out, character())
   }
 })
 

@@ -125,7 +125,7 @@ scales	1.4.0	https://repo.r-wasm.org	scales_1.4.0.tgz	1e3fd9c44c6bba3ea2911ee8a2
 simsurv	1.0.1	https://repo.r-wasm.org	simsurv_1.0.1.tgz	c35ae60c414c0b04a975572335d9a35c823b455f0436808a83a40cb6d56b2846	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/simsurv_1.0.1.tgz
 StanHeaders	2.39.1.1	local:vendor/wasm-repo	StanHeaders_2.39.1.1.tgz	d5b3154a78416888537b273b277d731dacd8c68f3abf8dfad92d1bcb036dfd6c	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/StanHeaders_2.39.1.1.tgz
 stanli	0.31.0	https://seantalts.r-universe.dev	stanli_0.31.0.tgz	4876d52efc65408a812cbb8dcfe6da004707defcaeb60afd5d493c2a0d91face	https://seantalts.r-universe.dev/bin/emscripten/contrib/4.6/stanli_0.31.0.tgz
-stanliWebR	0.10.0	local:vendor/wasm-repo	stanliWebR_0.10.0.tgz	ada04459105102156c4b45b420a8e7847b7fa087f5fcb99e1a30235b742abfa9	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/stanliWebR_0.10.0.tgz
+stanliWebR	0.10.1	local:vendor/wasm-repo	stanliWebR_0.10.1.tgz	3e8d363a8133bd23c11d13075ec6c8ac42858a06f8c177edb992795c11e39eb7	local:vendor/wasm-repo/bin/emscripten/contrib/4.6/stanliWebR_0.10.1.tgz
 statmod	1.5.2	https://repo.r-wasm.org	statmod_1.5.2.tgz	9391546e8e5959c61b48c43e0d9dc92afbbc0198fa3681b611849b440cf4da02	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/statmod_1.5.2.tgz
 stringi	1.8.9	https://repo.r-wasm.org	stringi_1.8.9.tgz	9dbaf879802701c962215cea056873187e4034ea8aa4d9c3309871c3fa190a1c	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/stringi_1.8.9.tgz
 stringr	1.6.0	https://repo.r-wasm.org	stringr_1.6.0.tgz	be6e72ef1c8ddecbf44aa42a7ba7c7a333645e218ab57f92992a8a5b7a4030f3	https://repo.r-wasm.org/bin/emscripten/contrib/4.6/stringr_1.6.0.tgz

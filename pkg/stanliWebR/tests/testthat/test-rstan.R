@@ -74,6 +74,19 @@ test_that("sampling() refuses what stanli cannot honour rather than ignoring it"
   expect_error(quiet_sampling(m, bogus = 1), "bogus")
 })
 
+test_that("sampling(show_messages = FALSE) drops the sampler's notices, as rstan does", {
+  m <- rstan::stan_model(model_code = "
+    parameters { real mu; }
+    model { if (mu < 0) reject(\"mu must be >= 0\"); mu ~ normal(0, 1); }
+  ")
+  notices <- function(show) {
+    capture.output(fit <- rstan::sampling(m, chains = 1, iter = 200, seed = 3, refresh = 0,
+                                          show_messages = show))
+  }
+  expect_match(paste(notices(TRUE), collapse = "\n"), "Informational Message", fixed = TRUE)
+  expect_identical(notices(FALSE), character())
+})
+
 test_that("stan() compiles and samples in one call", {
   fit <- rstan::stan(model_code = normal_code, data = normal_data, chains = 1, iter = 200,
                      seed = 5, refresh = 0)

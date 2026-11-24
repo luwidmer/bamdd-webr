@@ -39,7 +39,7 @@ stanli_sampling <- function(object, data = list(), pars = NA, chains = 4L, iter 
     refresh = if (isTRUE(show_messages)) refresh else 0, save_warmup = save_warmup,
     cores = cores, pars = if (identical(pars, NA)) NULL else pars, include = include,
     metric = control$metric, step_size = control$stepsize,
-    adapt_engaged = control$adapt_engaged
+    adapt_engaged = control$adapt_engaged, show_messages = isTRUE(show_messages)
   )
   fit@model_name <- object@model_name
   fit

@@ -129,6 +129,8 @@ stanli_fit_mcmc <- function(designmat, outcome, group, subjid, visit, method, qu
     step_size = sampler$stepsize,
     adapt_engaged = sampler$adapt_engaged,
     refresh = if (quiet) 0 else control$refresh,
+    # rbmi's own fit_mcmc() hides the sampler's notices too, through record().
+    show_messages = !quiet,
     # rbmi asks rstan for these two only.
     pars = c("beta", "Sigma"),
     # rbmi checks for the class by name, which stanli's subclass does not pass; rbmi

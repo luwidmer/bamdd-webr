@@ -14,7 +14,8 @@ require_namespaces <- function(target, pkgs) {
   # OncoBayes2), sort_asc() or chain_id, and lacks parameter_names(),
   # unconstrain(seed =, ignore_unknown =) and as_stanfit(plain =). Before 0.25.0
   # it also loses the generated quantities of OncoBayes2's combination models.
-  minimum <- c(stanli = "0.25.0")
+  # brms needs backend = "stanli" (paul-buerkner/brms#1966).
+  minimum <- c(stanli = "0.25.0", brms = "2.23.2")
   for (pkg in pkgs) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop("stanliWebR cannot patch ", target, ": the ", pkg,
@@ -40,8 +41,8 @@ patch_namespace <- function(pkg, replacements, fingerprints = NULL) {
   helpers$rstan_controls <- rstan_controls
   helpers$rstan_init <- rstan_init
   helpers$stanli_sampling <- stanli_sampling
-  helpers$brms_stanli_model <- brms_stanli_model
-  helpers$brms_sample_model <- brms_sample_model
+  helpers$webr_stanli_model <- webr_stanli_model
+  helpers$webr_sample_model <- webr_sample_model
   attached <- paste0("package:", pkg)
   for (name in names(replacements)) {
     if (!exists(name, envir = ns, mode = "function", inherits = FALSE)) {

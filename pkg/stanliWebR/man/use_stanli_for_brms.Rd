@@ -19,8 +19,7 @@ when brms was loaded before stanliWebR was installed.
 Two calls in brms's \code{.fit_model_stanli()} are replaced, and nothing else in brms is
 touched, so \code{init}, \code{control} and everything downstream of the fit are brms's own.
 \code{stanli::stanli_model()} builds the model in fast mode when
-\code{options(stanliWebR.fast_math = TRUE)} (see \link{stanliWebR-package}), and refuses a
-model whose transformed parameters and generated quantities stanli cannot compute.
+\code{options(stanliWebR.fast_math = TRUE)} (see \link{stanliWebR-package}).
 \code{stanli::sample_model()} samples the chains on webR workers when there are any.
 
 With \code{cores} > 1 and webR workers started by \code{miraiWebR::daemons()}, each chain is
