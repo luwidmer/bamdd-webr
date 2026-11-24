@@ -136,9 +136,10 @@ fit <- brm(time ~ age * sex, data = kidney)   # brms's stanli backend
   Should stanli ever build a model without its transformed parameters and generated
   quantities (stanli 0.24.0 did for OncoBayes2's combination models), stanliWebR
   stops with an error that asks for a stanli issue rather than return draws without
-  them. The compiled models are not used: once stanli's runtime is loaded, calling one
-  directly (`rstan::log_prob()` or `sampling()` on `RBesT:::stanmodels$gMAP`, for
-  instance) can crash webR with "memory access out of bounds".
+  them. The compiled models still load and run next to stanli: since 0.31.0, stanli's
+  webR runtime keeps its own Stan Math private (seantalts/stanli#652). With 0.30.1,
+  calling one directly (`rstan::log_prob()` on `RBesT:::stanmodels$gMAP`, for
+  instance) crashed webR with "memory access out of bounds".
 * **rstan:** `stan_model()` checks the Stan program and keeps it instead of compiling
   it, returning a `stanliWebR_stanmodel`, a subclass of rstan's `stanmodel`; `sampling()`
   on it, and so `stan()`, runs the program on stanli and returns a `stanfit`, with the
@@ -260,9 +261,9 @@ The engine is real, but there is no C++ toolchain in the browser: without stanli
 anything that *compiles* a Stan program (`rstan::stan_model()`) fails with "The
 `system()` function is unsupported under Emscripten". With stanliWebR loaded, programs
 from `stan_model()`, brms and rbmi, and the models in RBesT and OncoBayes2, are all
-interpreted by stanli instead (see stanliWebR above), and the precompiled models are not
-supported: once stanli's runtime is loaded they can crash webR, as `libstanli.so` exports
-its own Stan Math to the symbol table all wasm modules share.
+interpreted by stanli instead (see stanliWebR above). The precompiled models still work
+alongside it: stanli 0.31.0's webR runtime exports only stanli's C API, where 0.30.1's
+exported its own Stan Math to the symbol table all wasm modules share and so crashed them.
 
 ## Build
 

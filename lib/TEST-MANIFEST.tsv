@@ -165,7 +165,7 @@ src	sass	0.4.10	4adb4c243f74d811276529e346deaa064bce28dbfbb837208fc85f2c47b79b30
 src	scales	1.4.0	d55ef5f08c92652d7a95cfa27584024723ab17873f1b2577dd488cb7c883ceee	https://cloud.r-project.org/src/contrib/scales_1.4.0.tar.gz
 src	simsurv	1.0.1	6ee9c14d40f104ae626e24103560d1532403361c5ca3e0c022b49f5871b610b1	https://cloud.r-project.org/src/contrib/simsurv_1.0.1.tar.gz
 src	StanHeaders	2.39.1.1	025e433e64f94667f3649466a8c2d45da64af05308e884959dea09b71eada706	https://cloud.r-project.org/src/contrib/StanHeaders_2.39.1.1.tar.gz
-src	stanli	0.30.1	0bcd5576cd51c674eb91fd6fca1fb08e4d69d993e8d8e23a89c0e1f877204c97	https://github.com/seantalts/stanli/archive/f63191b993477cee4391742ca7d32d4ee5402f5a.tar.gz#r
+src	stanli	0.31.0	c2c9b5b52962b6ed1b588dfcf2889b5fc8885ee568d56ac005b25e7e655963b1	https://github.com/seantalts/stanli/archive/f29a7cfc808ee5a5d7d14884ab4b85931eee156f.tar.gz#r
 src	stanliWebR	0.10.0	-	local:pkg/stanliWebR
 src	statmod	1.5.2	5f83d82043c5e26f1048fc0139580da1b7e40becf95fb4cb26ed3afcd46a581d	https://cloud.r-project.org/src/contrib/statmod_1.5.2.tar.gz
 src	stringi	1.8.9	427fcebd281d7ea850becce75e0807576dd394a723a814b2d487419b93275a33	https://cloud.r-project.org/src/contrib/stringi_1.8.9.tar.gz

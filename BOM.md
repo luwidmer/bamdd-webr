@@ -20,7 +20,7 @@ and the version pins in [tools/fetch-webr.sh](tools/fetch-webr.sh),
 | --- | --- | --- | --- | --- |
 | webR | 0.6.1 | `github.com/r-wasm/webr` release tarball → `vendor/webr/` | webR's own sources MIT; the distribution embeds R, so GPL-2 \| GPL-3 governs what is served | R compiled to WebAssembly; `R.wasm`, `R.js`, `webr.mjs`, worker, VFS |
 | R | 4.6.0 | bundled inside webR 0.6.1 | GPL-2 \| GPL-3 | the interpreter itself |
-| stanli | 0.30.1 | `seantalts.r-universe.dev` | BSD-3-Clause | Stan *interpreter* — replaces the absent C++ toolchain; `brm()`, `rbmi::method_bayes()`, `RBesT::gMAP()` and `OncoBayes2::blrm_exnex()` sample with it through `stanliWebR` |
+| stanli | 0.31.0 | `seantalts.r-universe.dev` | BSD-3-Clause | Stan *interpreter* — replaces the absent C++ toolchain; `brm()`, `rbmi::method_bayes()`, `RBesT::gMAP()` and `OncoBayes2::blrm_exnex()` sample with it through `stanliWebR` |
 | Emscripten | 5.0.7 | `emscripten/emsdk` image (build-time only) | MIT / NCSA | the ABI everything above is compiled to |
 
 The webR version, the bundled R version and the `contrib/4.6` package directory are a
@@ -247,7 +247,7 @@ deliberately excluded (compile-time only). webR bundles no recommended packages,
 | `scales` | 1.4.0 | repo.r-wasm.org | MIT |
 | `simsurv` | 1.0.1 | repo.r-wasm.org | GPL (>= 3) |
 | `StanHeaders` | 2.39.1.1 | vendor/wasm-repo | BSD-3-Clause |
-| `stanli` | 0.30.1 | seantalts* | BSD-3-Clause |
+| `stanli` | 0.31.0 | seantalts* | BSD-3-Clause |
 | `stanliWebR` | 0.10.0 | vendor/wasm-repo | Apache-2.0 |
 | `statmod` | 1.5.2 | repo.r-wasm.org | GPL-2 or GPL-3 |
 | `stringi` | 1.8.9 | repo.r-wasm.org | file LICENSE (BSD-style + ICU) |
