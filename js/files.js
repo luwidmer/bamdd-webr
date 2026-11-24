@@ -1,4 +1,4 @@
-// webR 0.6.0's R.wasm is built with LLVM profiling and drops this into its working dir.
+// webR 0.6's R.wasm is built with LLVM profiling and drops this into its working dir.
 const HIDDEN = new Set(['default.profraw']);
 
 /** The file's text, or null when it is binary: any NUL byte, or not valid UTF-8. */

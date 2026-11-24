@@ -40,6 +40,16 @@ test_that("chains on webR workers are identical to a sequential fit", {
   expect_identical(as.array(parallel), as.array(sequential))
 })
 
+test_that("brms chains on webR workers are identical to a sequential fit", {
+  skip_if_not_installed("brms")
+  skip_if_no_workers()
+  fit <- function(cores) {
+    suppressMessages(brms::brm(y ~ 1, data = data.frame(y = c(-1, 0.5, 2)), chains = 2,
+                               iter = 300, seed = 4, cores = cores, refresh = 0, silent = 2))
+  }
+  expect_identical(as.array(fit(2)$fit), as.array(fit(1)$fit))
+})
+
 test_that("options(stanliWebR.fast_math =) must be TRUE or FALSE", {
   withr::local_options(stanliWebR.fast_math = "yes")
   expect_error(stanliWebR:::fast_math_option(), "TRUE or FALSE")

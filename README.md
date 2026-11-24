@@ -96,43 +96,50 @@ them.
 
 ### brms, rbmi, RBesT, OncoBayes2 and rstan on stanli: stanliWebR
 
-brms and `rbmi::method_bayes()` both hand a generated Stan program to rstan, which
-compiles it with a C++ toolchain and so fails here. `stanliWebR`, whose source is in
-`pkg/stanliWebR`, swaps out the few package internals that compile and sample for
-equivalents that run the same program on stanli and return an ordinary rstan
-`stanfit`:
+rbmi's `method_bayes()` hands a generated Stan program to rstan, which compiles it with
+a C++ toolchain and so fails here. `stanliWebR`, whose source is in `pkg/stanliWebR`,
+swaps out the few package internals that compile and sample for equivalents that run
+the same program on stanli and return an ordinary rstan `stanfit`. brms has a stanli
+backend of its own, which stanliWebR makes the default:
 
 ```r
 library(stanliWebR)   # patches brms, rbmi, RBesT, OncoBayes2, rstan, now or whenever loaded
 library(brms)
-fit <- brm(time ~ age * sex, data = kidney)   # default backend, sampled by stanli
+fit <- brm(time ~ age * sex, data = kidney)   # brms's stanli backend
 ```
 
-* **brms:** `.compile_model_rstan()` only checks and keeps the code, so a broken
-  program fails before any data are prepared, and `.fit_model_rstan()` samples with
-  stanli. The fitted object, and everything downstream of it (`summary()`,
-  `posterior_predict()`, `loo()`, `update()`), is brms's own. Parameters brms excludes,
-  such as `z_1`, are dropped as rstan drops them, so no `save_pars()` is needed. The
-  fit keeps stanli's model, so `loo_moment_match()` and `bridge_sampler()` work as
-  with rstan (both need `save_pars(all = TRUE)`); a fit read back from disk gets its
-  model rebuilt. Only NUTS is supported; `control` may set `adapt_delta`,
-  `max_treedepth`, `stepsize`, `metric` (`"diag_e"`, `"dense_e"` or `"unit_e"`) and
-  `adapt_engaged`, and anything else stops with an error rather than being ignored.
+* **brms:** the image's brms, built from paul-buerkner/brms@426188c (2.23.2, master),
+  has `backend = "stanli"` (paul-buerkner/brms#1966), and stanliWebR sets
+  `options(brms.backend = "stanli")` unless a backend is already set. The backend,
+  its `init` and `control` handling and everything downstream of the fit are brms's
+  own; see `?brm`. stanliWebR replaces two calls in it: `stanli::sample_model()`, so
+  that chains sample on webR workers (below), and `stanli::stanli_model()`, so that
+  `stanliWebR.fast_math` applies.
+  brms master needs `future` >= 1.80.0, so the image's `future` 1.82.0 is built here
+  from CRAN's source, as repo.r-wasm.org has 1.76.0.
 * **rbmi:** `get_stan_model()` only renders the program, and `fit_mcmc()` samples it
   with stanli. rbmi's own draw extraction and diagnostics then run unchanged, on
-  rbmi's Stan program as it ships.
-* **RBesT and OncoBayes2:** these ship precompiled models and work without
-  stanliWebR (see "Where rstan comes from"). With it, the one `rstan::sampling()`
-  call in `gMAP()` and in `blrm_exnex()` runs the same Stan program on stanli instead,
-  which is much faster here: `gMAP()` on `AS` takes 3 s instead of 26 s, and
-  OncoBayes2's single-agent example 8 s instead of 34 s. Both programs run as they
-  ship. Their `control` settings, including the starting step size, reach stanli as they
-  would reach rstan. Should stanli ever build a model without its transformed
-  parameters and generated quantities (stanli 0.24.0 did for OncoBayes2's combination
-  models), stanliWebR refuses it rather than return draws without them. Outside webR
-  it then samples the package's compiled model with rstan; in webR that model cannot
-  run once stanli is loaded (all wasm modules share one symbol table, and it crashes),
-  so the error asks you to restart R without `library(stanliWebR)`.
+  rbmi's Stan program as it ships. `control_bayes(control = list(...))` reaches stanli:
+  `adapt_delta`, `max_treedepth`, `stepsize`, `metric` and `adapt_engaged`; anything
+  else stops with an error rather than being ignored. Starting values follow rstan,
+  which ignores list-valued
+  ones. The image's rbmi, built from openpharma/rbmi@2d7b92b (PR #614), passes its MMRM
+  estimates in Stan's names and shapes, so with `init = "mmrm"` every parameter starts
+  from the MMRM fit; with rbmi 1.7.1 and earlier only `theta` does. The patch stops if
+  rbmi's two replaced functions change in a later release.
+* **RBesT and OncoBayes2:** these ship precompiled models, but here they are supported
+  only through stanli: the one `rstan::sampling()` call in `gMAP()` and in
+  `blrm_exnex()` runs the same Stan program on stanli instead, which is also much
+  faster: `gMAP()` on `AS` takes 3 s instead of 26 s, and OncoBayes2's single-agent
+  example 8 s instead of 34 s. Both programs run as they ship. Their `control`
+  settings, including the starting step size, reach stanli as they would reach rstan.
+  Should stanli ever build a model without its transformed parameters and generated
+  quantities (stanli 0.24.0 did for OncoBayes2's combination models), stanliWebR
+  stops with an error that asks for a stanli issue rather than return draws without
+  them. The compiled models still load and run next to stanli: since 0.31.0, stanli's
+  webR runtime keeps its own Stan Math private (seantalts/stanli#652). With 0.30.1,
+  calling one directly (`rstan::log_prob()` on `RBesT:::stanmodels$gMAP`, for
+  instance) crashed webR with "memory access out of bounds".
 * **rstan:** `stan_model()` checks the Stan program and keeps it instead of compiling
   it, returning a `stanliWebR_stanmodel`, a subclass of rstan's `stanmodel`; `sampling()`
   on it, and so `stan()`, runs the program on stanli and returns a `stanfit`, with the
@@ -153,7 +160,7 @@ differ from a default run with the same seed, and the reproducibility fingerprin
 longer match. stanliWebR needs stanli 0.25.0 or later and says so if it finds an
 older one.
 
-`brm(backend = "stanli")` is not a brms backend; plain `brm()` is the way.
+`brm(backend = "rstan")` is not needed; plain `brm()` uses brms's stanli backend.
 `webr-examples/rbmi-bayes-stanli.R` runs rbmi on `antidepressant_data` under
 jump-to-reference. `method_condmean()`, `method_approxbayes()` and `method_bmlmi()`
 need none of this -- they go through mmrm's maximum-likelihood fit.
@@ -239,26 +246,30 @@ RBesT's Stan model is an Rcpp module inside its own `.so`, so it needs a real rs
 must itself be cross-compiled. `OncoBayes2` is built the same way and needs the same
 thing for `blrm_exnex()`.
 
-rstan 2.32.7 and StanHeaders 2.32.10 therefore come from RBesT's own webR build harness
-([`Novartis/RBesT`](https://github.com/Novartis/RBesT), `tools/webr/docker`), with the
+rstan 2.39.0.9000 (stan-dev/rstan@6d858e0, develop) and StanHeaders 2.39.1.1 (CRAN)
+therefore come from RBesT's own webR build harness
+([`Novartis/RBesT`](https://github.com/Novartis/RBesT), `tools/webr/docker`, patched to
+take those pins), with the
 Intel TBB entry points Stan Math instantiates stubbed out (`inst/webr/tbb-stubs.cpp`);
-RBesT and OncoBayes2 are cross-compiled against them by `tools/build-wasm-pkg.sh`.
+StanHeaders is cross-compiled by `tools/build-wasm-pkg.sh`, as is everything built
+against it: RBesT and OncoBayes2.
 `tools/vendor-wasm-repo.R` collects these and the other packages built here into
 `vendor/wasm-repo/`, a small CRAN-like wasm repo that `build-library.R` resolves
 against first.
 
-The engine is real, so `gMAP()` samples, but there is still no C++ toolchain in the
-browser: without stanliWebR, anything that *compiles* a Stan program
-(`rstan::stan_model()`) fails with "The `system()` function is unsupported under
-Emscripten". Precompiled models work as they are. With stanliWebR loaded, programs from
-`stan_model()`, brms and rbmi, and the models in RBesT and OncoBayes2, are all
-interpreted by stanli instead (see stanliWebR above).
+The engine is real, but there is no C++ toolchain in the browser: without stanliWebR,
+anything that *compiles* a Stan program (`rstan::stan_model()`) fails with "The
+`system()` function is unsupported under Emscripten". With stanliWebR loaded, programs
+from `stan_model()`, brms and rbmi, and the models in RBesT and OncoBayes2, are all
+interpreted by stanli instead (see stanliWebR above). The precompiled models still work
+alongside it: stanli 0.31.0's webR runtime exports only stanli's C API, where 0.30.1's
+exported its own Stan Math to the symbol table all wasm modules share and so crashed them.
 
 ## Build
 
 Needs R (for the build scripts only), `bash` and `curl`.
 
-**No build outputs are committed.** `vendor/` is ignored in full, so the twelve wasm
+**No build outputs are committed.** `vendor/` is ignored in full, so the fifteen wasm
 packages built here are absent and `build-library.R` fails loudly until they are
 rebuilt. Every input is public: RBesT, OncoBayes2, rstan, StanHeaders, jinjar, sass,
 vroom, mmrm, Matrix and TMB are all on CRAN; `tools/build-wasm-pkg.sh` cross-compiles RBesT,
@@ -271,10 +282,13 @@ empty `crossprod()` results for an `RsparseMatrix`), and TMB, whose upstream bui
 (1.9.11) is too old to compile mmrm against, the build harness of
 [`Novartis/RBesT`](https://github.com/Novartis/RBesT) (`tools/webr/docker`, cloned at
 `vendor/BesT`) cross-compiles rstan and StanHeaders and supplies the Emscripten image
-`build-wasm-pkg.sh` uses, and stanliWebR and miraiWebR are in `pkg/` here. Rebuilding
-everything needs Docker; only the first-party packages, which are pure R, do not.
+`build-wasm-pkg.sh` uses, and stanliWebR and miraiWebR are in `pkg/` here. rbmi and brms
+are built from the commits pinned in `tools/upstream.R` until a release carries
+rbmi's starting-value fix and brms's stanli backend, and `future` from CRAN's source,
+since repo.r-wasm.org's is older than brms needs. Rebuilding everything needs Docker;
+only the pure-R packages (stanliWebR, miraiWebR, rbmi, brms, future) do not.
 
-Without Docker, download the twelve as the bundle published by `wasm-repo.yml` and pinned
+Without Docker, download the fifteen as the bundle published by `wasm-repo.yml` and pinned
 in `lib/WASM_REPO`; [DEPLOY.md](DEPLOY.md) ("The wasm package bundle") explains how it is
 built and verified. This works once a bundle has been published, i.e. once
 `lib/WASM_REPO` no longer says `PENDING`:
@@ -282,14 +296,14 @@ built and verified. This works once a bundle has been published, i.e. once
 ```sh
 git clone https://github.com/luwidmer/bamdd-webr.git && cd bamdd-webr
 Rscript -e 'remotes::install_github("r-wasm/rwasm")'   # once; pure R, no Emscripten
-bash    tools/fetch-webr.sh          # webR 0.6.0 -> vendor/webr  (~54 MB)
+bash    tools/fetch-webr.sh          # webR 0.6.1 -> vendor/webr  (~54 MB)
 bash    tools/fetch-ui-libs.sh       # xterm.js + CodeMirror 5 -> vendor/
-bash    tools/fetch-wasm-repo.sh     # the twelve above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
+bash    tools/fetch-wasm-repo.sh     # the fifteen above -> vendor/wasm-repo, the other pins -> vendor/pkgcache
 Rscript tools/build-library.R        # 142 wasm packages -> build/library (~286 MB)
 Rscript tools/pack-library.R         # -> lib/library.tar.gz (~138 MB)
 ```
 
-To build the twelve yourself instead, skip `fetch-wasm-repo.sh` and follow the three
+To build the fifteen yourself instead, skip `fetch-wasm-repo.sh` and follow the three
 "Rebuilding ..." sections below and "Cross-compiling any other package" for the CRAN
 ones, then `Rscript tools/vendor-wasm-repo.R`.
 
@@ -309,27 +323,35 @@ Rscript tools/build-library.R --resolve
 The CRAN tarball of RBesT is 757 KB; its development tree also carries a 5.77 MB
 `sbc/calibration_data.rds` that no RBesT function reads, so building from CRAN keeps the
 wasm binary at 1.4 MB. Verified in the browser: `library(RBesT)` loads and `gMAP()`
-samples.
+samples, through stanli.
 
 OncoBayes2 `Depends: RBesT`, and every one of its imports is already in the closure, so
 it adds nothing but its own 1.3 MB binary. Verified in the browser:
-`example_model("single_agent")` samples through the real rstan backend and
+`example_model("single_agent")` samples through stanli and
 `summary(fit, interval_prob = ...)` returns the interval probabilities.
 
 `WASM_PKG_STAN=1` is what makes both work; see "Cross-compiling any other package".
 
 ### Rebuilding rstan and StanHeaders
 
+The Stan pair is pinned in `tools/upstream.R` (`STAN`): rstan from a commit of
+stan-dev/rstan's develop branch, as rstan 2.36 and later have no CRAN release, and
+StanHeaders from CRAN. `tools/wasm-patches/BesT-webr-harness.patch` makes the harness
+take those instead of deriving them, and look up a locally built StanHeaders first:
+
 ```sh
 git clone --depth 1 --branch v1.12-0 https://github.com/Novartis/RBesT.git vendor/BesT
-cd vendor/BesT
-Rscript tools/make-ds.R              # data/*.rda and R/sysdata.rda are generated, not tracked
-cd tools/webr/docker
-RBEST_SRC=$(git -C ../../.. rev-parse --show-toplevel) docker compose build
-RBEST_SRC=... RBEST_OUT=... RBEST_VARIANTS=notbb docker compose run --rm build
-cd -
+git -C vendor/BesT apply "$PWD/tools/wasm-patches/BesT-webr-harness.patch"
+(cd vendor/BesT && Rscript tools/make-ds.R)  # data/*.rda and R/sysdata.rda are generated, not tracked
+eval "$(Rscript tools/upstream.R --env | sed 's/^/export /')"
+export RBEST_SRC="$PWD/vendor/BesT" RBEST_OUT="$PWD/vendor/BesT/build/webr/output"
+(cd vendor/BesT/tools/webr/docker && docker compose build)
+tools/build-wasm-pkg.sh StanHeaders "$RBEST_STANHEADERS_VERSION"
+local_wasm="$RBEST_OUT/local-wasm/bin/emscripten/contrib/4.6"
+mkdir -p "$local_wasm" && mv build/wasm-extra/StanHeaders_*.tgz "$local_wasm/"
+Rscript -e "tools::write_PACKAGES('$local_wasm', type = 'mac.binary')"
+(cd vendor/BesT/tools/webr/docker && RBEST_VARIANTS=notbb docker compose run --rm build)
 Rscript tools/vendor-wasm-repo.R     # -> vendor/wasm-repo/
-Rscript tools/build-library.R --resolve
 ```
 
 This also builds the image `tools/build-wasm-pkg.sh` uses, so it is still the first
@@ -337,7 +359,8 @@ step on a new machine. `make-ds.R` is not optional: `.onAttach()` reads
 `pkg_create_date` out of `R/sysdata.rda`, so without it RBesT installs cleanly and then
 fails on `library(RBesT)`. Behind a TLS-intercepting proxy, point `CORP_CERTS_DIR` at a
 directory of `*.pem` CA roots and add the same roots to the Docker daemon's trust
-store, or every https fetch in the build fails.
+store, or every https fetch in the build fails. RBesT and OncoBayes2 have to be rebuilt
+after rstan (next section), as their generated C++ follows rstan's.
 
 ### Rebuilding stanliWebR and miraiWebR
 
@@ -566,7 +589,7 @@ committed; `--resolve` is the only mode that reads it, and it fails loudly askin
 `lib/MANIFEST.tsv` and needs no index at all.
 
 To bump webR, edit `WEBR_VERSION` in `tools/fetch-webr.sh`. **The R version webR bundles
-must match `R_CONTRIB` in `tools/build-library.R`** (webR 0.6.0 → R 4.6.0 → `contrib/4.6`).
+must match `R_CONTRIB` in `tools/build-library.R`** (webR 0.6.1 → R 4.6.0 → `contrib/4.6`).
 Wasm binaries built for another R version will not load; `fetch-webr.sh` prints the
 bundled version so you can check.
 
@@ -578,7 +601,7 @@ breaks a pinned sha256, and `--frozen` then fails loudly. That is correct behavi
 it means the real reproducible artifacts are the downloaded tarballs, which
 `wasm-repo.yml` publishes as the `-packages.tar` asset of the pinned Release
 (`fetch-wasm-repo.sh` unpacks them into `vendor/pkgcache/`), and the built
-`lib/library.tar.gz`. The twelve in `vendor/wasm-repo/` are not committed, so they have
+`lib/library.tar.gz`. The fifteen in `vendor/wasm-repo/` are not committed, so they have
 to be fetched or rebuilt before a `--frozen` run can succeed; `build-library.R` names
 the missing file and the script to run.
 

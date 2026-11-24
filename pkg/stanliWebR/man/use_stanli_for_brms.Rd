@@ -10,34 +10,22 @@ use_stanli_for_brms()
 \code{TRUE}, invisibly.
 }
 \description{
-Runs brms's default \code{"rstan"} backend on stanli: the Stan program brms generates
-is interpreted rather than compiled, and the result is an ordinary rstan
-\code{stanfit}. Loading stanliWebR arranges for this to happen whenever brms is
-loaded, so calling it by hand is only needed when brms was loaded before
-stanliWebR was installed.
+brms has a stanli backend of its own, \code{backend = "stanli"} (paul-buerkner/brms#1966).
+Loading stanliWebR makes it brms's default, unless \code{options(brms.backend =)} is
+already set, and adds what webR needs on top. Calling this by hand is only needed
+when brms was loaded before stanliWebR was installed.
 }
 \details{
-Two brms internals are replaced: \code{.compile_model_rstan}, which only checks and
-keeps the Stan code, since stanli builds a model when the data are known; and
-\code{.fit_model_rstan}, which samples with stanli. Nothing else in brms is touched,
-so the fitted object, and everything downstream of it, is brms's own. Parameters
-brms excludes from the output (the standardised group-level effects \verb{z_*}, for
-instance) are dropped as rstan would drop them, and post-processing such as
-\code{\link[brms:posterior_predict]{brms::posterior_predict()}} needs no \code{save_pars()}. The fit keeps stanli's
-model, so \code{\link[brms:loo_moment_match]{brms::loo_moment_match()}} and \code{\link[brms:bridge_sampler]{brms::bridge_sampler()}} evaluate the
-log density without recompiling (both need \code{save_pars(all = TRUE)}, as with
-rstan).
+Two calls in brms's \code{.fit_model_stanli()} are replaced, and nothing else in brms is
+touched, so \code{init}, \code{control} and everything downstream of the fit are brms's own.
+\code{stanli::stanli_model()} builds the model in fast mode when
+\code{options(stanliWebR.fast_math = TRUE)} (see \link{stanliWebR-package}).
+\code{stanli::sample_model()} samples the chains on webR workers when there are any.
 
-The NUTS sampler is the only algorithm. Supported \code{control} entries are
-\code{adapt_delta}, \code{max_treedepth}, \code{stepsize}, \code{metric} (\code{"diag_e"}, \code{"dense_e"}
-or \code{"unit_e"}) and \code{adapt_engaged}; \code{init} may be \code{"random"}, \code{"0"}, a
-non-negative radius, or a list of starting values, applied as rstan applies
-them. Anything else stops with an error rather than being ignored.
-
-With \code{cores} > 1 and webR workers started by \code{miraiWebR::daemons()}, each
-chain is sampled on a worker of its own, with the same random stream it has in
-a sequential run, so the fit is identical to the sequential one. Without
-workers the chains run one after another, and a message says so.
+With \code{cores} > 1 and webR workers started by \code{miraiWebR::daemons()}, each chain is
+sampled on a worker of its own, with the same random stream it has in a sequential
+run, so the fit is identical to the sequential one. Without workers the chains run
+one after another, and a message says so.
 }
 \examples{
 \dontrun{

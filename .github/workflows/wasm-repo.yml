@@ -1,5 +1,6 @@
-# Build the twelve wasm packages that have no usable upstream build (ten cross-compiled,
-# two first-party), and publish them as a Release asset that deploy.yml consumes.
+# Build the fifteen wasm packages that have no usable upstream build (ten cross-compiled,
+# two first-party, and rbmi, brms and future from pinned sources), and publish them as a Release asset
+# that deploy.yml consumes.
 # sass, vroom and mmrm do have upstream builds, but only of unreleased development
 # versions; building the CRAN releases here keeps every package's source, and so its
 # tests (tools/test-packages.mjs), tied to a published release. Matrix has one too, but
@@ -9,7 +10,7 @@
 #
 # Runs a handful of times a year, needs no Cloudflare credentials, and opens a pull
 # request with the regenerated lib/MANIFEST.tsv rather than committing it: R CMD INSTALL
-# output is not byte-reproducible, so every rebuild changes all twelve sha256 sums, and the
+# output is not byte-reproducible, so every rebuild changes all fifteen sha256 sums, and the
 # manifest diff is this project's only drift detection.
 #
 # Nothing here changes when deploy.yml gains its push/pull_request triggers
@@ -43,7 +44,7 @@ on:
         default: 1.7-6
       webr_tag:
         description: must match WEBR_VERSION in tools/fetch-webr.sh
-        default: v0.6.0
+        default: v0.6.1
 
 permissions:
   contents: read
@@ -81,11 +82,13 @@ jobs:
             /usr/local/share/boost /usr/local/.ghcup
           df -h /
 
-      # tools/build-wasm-pkg.sh resolves the image recipe at $root/vendor/BesT.
+      # tools/build-wasm-pkg.sh resolves the image recipe at $root/vendor/BesT. The patch
+      # makes the harness take the Stan sources pinned in tools/upstream.R.
       - name: Fetch the RBesT build harness
         run: |
           git clone --depth 1 --branch "$RBEST_REF" \
             https://github.com/Novartis/RBesT.git vendor/BesT
+          git -C vendor/BesT apply "$GITHUB_WORKSPACE/tools/wasm-patches/BesT-webr-harness.patch"
 
       # tools/build-first-party.R refuses to run unless the host R minor matches webR's.
       - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
@@ -93,14 +96,20 @@ jobs:
           r-version: '4.6.0'
           use-public-rspm: true
 
-      # usethis is what RBesT's tools/make-ds.R calls; R CMD INSTALL of pkg/* needs their Imports.
+      # usethis is what RBesT's tools/make-ds.R calls; R CMD INSTALL of pkg/* and of rbmi,
+      # brms and future needs their Imports.
       - uses: r-lib/actions/setup-r-dependencies@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
         with:
-          packages: any::rstantools, any::usethis, github::r-wasm/rwasm, deps::./pkg/stanliWebR, deps::./pkg/miraiWebR
+          packages: any::rstantools, any::usethis, github::r-wasm/rwasm, deps::./pkg/stanliWebR, deps::./pkg/miraiWebR, any::rbmi, any::brms, any::future
           dependencies: '"hard"'
 
-      # Before the Docker builds, so a failure here costs minutes rather than hours.
-      - name: Build stanliWebR and miraiWebR
+      # RBEST_RSTAN_* and RBEST_STANHEADERS_*, read by the harness's image build and run.
+      - name: Pin the Stan sources
+        run: Rscript tools/upstream.R --env >> "$GITHUB_ENV"
+
+      # Before the Docker builds, so a failure here costs minutes rather than hours. rbmi,
+      # brms and future are pure R, built from the sources pinned in tools/upstream.R.
+      - name: Build stanliWebR, miraiWebR, rbmi, brms and future
         run: Rscript tools/build-first-party.R
 
       # data/*.rda and R/sysdata.rda are generated, not tracked, and .onAttach() reads
@@ -115,8 +124,21 @@ jobs:
           RBEST_SRC: ${{ github.workspace }}/vendor/BesT
         run: docker compose build
 
+      # No wasm StanHeaders of the pinned release is published, so it is built here into
+      # the local repo the patched harness reads first. It stays out of build/wasm-extra:
+      # the harness's copy, which records its header patch, is the one shipped.
+      - name: Cross-compile StanHeaders
+        env:
+          RBEST_OUT: ${{ github.workspace }}/vendor/BesT/build/webr/output
+        run: |
+          tools/build-wasm-pkg.sh StanHeaders "$RBEST_STANHEADERS_VERSION"
+          local_wasm="$RBEST_OUT/local-wasm/bin/emscripten/contrib/4.6"
+          mkdir -p "$local_wasm"
+          mv "build/wasm-extra/StanHeaders_${RBEST_STANHEADERS_VERSION}.tgz" "$local_wasm/"
+          Rscript -e "tools::write_PACKAGES('$local_wasm', type = 'mac.binary')"
+
       # RBEST_OUT must match tools/vendor-wasm-repo.R's default lookup path.
-      - name: Cross-compile rstan and StanHeaders
+      - name: Cross-compile rstan
         working-directory: vendor/BesT/tools/webr/docker
         env:
           RBEST_SRC: ${{ github.workspace }}/vendor/BesT
@@ -321,7 +343,7 @@ jobs:
             smoke test) before this pull request was opened; `deploy.yml` does not run on
             pull requests opened by a workflow.
 
-            Review `lib/MANIFEST.tsv` before merging. The twelve `local:vendor/wasm-repo`
+            Review `lib/MANIFEST.tsv` before merging. The fifteen `local:vendor/wasm-repo`
             rows are expected to change sha256 on every rebuild; any other movement
             came from `--resolve` re-querying the remote repositories.
           add-paths: |

@@ -12,6 +12,8 @@
 #
 # `pars` and `include` select the parameters kept, as rstan's do; lp__ is always
 # kept. `metric`, `step_size` and `adapt_engaged` go to stanli only when given.
+# `show_messages = FALSE` drops the sampler's notices, which stanli prints whatever
+# `refresh` is.
 # `plain = TRUE` returns an object of class exactly "stanfit", without the model.
 #
 # Neither stanli nor this function draws from R's random stream.
@@ -19,36 +21,25 @@ sample_stanfit <- function(code, data, chains, warmup, samples, thin, seed, init
                            delta, max_depth, refresh, threads = 1L,
                            save_warmup = FALSE, cores = 1L, pars = NULL,
                            include = TRUE, metric = NULL, step_size = NULL,
-                           adapt_engaged = NULL, plain = FALSE) {
-  fast_math <- fast_math_option()
-  data <- stan_data(data)
-  model <- stanli_model_complete(code = code, data = data, seed = seed, fast_math = fast_math)
+                           adapt_engaged = NULL, plain = FALSE, show_messages = TRUE) {
+  model <- webr_stanli_model(code = code, data = stan_data(data), seed = seed,
+                             threads_per_chain = threads)
   init <- if (is.function(init)) init(model, seed) else init
-  exclude <- excluded_pars(model, pars, include)
-  controls <- Filter(Negate(is.null), list(
-    metric = metric, step_size = step_size, adapt_engaged = adapt_engaged
-  ))
-  if (use_workers(chains, cores)) {
-    fit <- sample_on_workers(
-      model, code = code, data = data, chains = chains, seed = seed, init = init,
-      warmup = warmup, samples = samples, thin = thin, delta = delta,
-      max_depth = max_depth, threads = threads, save_warmup = save_warmup,
-      fast_math = fast_math, controls = controls
-    )
-    return(stanli::as_stanfit(fit, exclude = exclude, plain = plain))
-  }
   args <- c(list(
     model,
     chains = chains, seed = seed, warmup = warmup, samples = samples, thin = thin,
-    delta = delta, max_depth = max_depth, refresh = refresh,
-    threads_per_chain = threads, save_warmup = save_warmup
-  ), controls)
+    delta = delta, max_depth = max_depth, refresh = refresh, save_warmup = save_warmup,
+    parallel_chains = min(cores %||% 1L, chains), show_messages = show_messages
+  ), Filter(Negate(is.null), list(
+    metric = metric, step_size = step_size, adapt_engaged = adapt_engaged
+  )))
   if (is.matrix(init)) {
     args$init <- init
   } else {
     args$init_radius <- init
   }
-  stanli::as_stanfit(do.call(stanli::sample_model, args), exclude = exclude, plain = plain)
+  stanli::as_stanfit(do.call(webr_sample_model, args),
+                     exclude = excluded_pars(model, pars, include), plain = plain)
 }
 
 # rstan reads any list in the data as an array of its elements, while stanli
@@ -64,27 +55,39 @@ stan_data <- function(data) {
   data
 }
 
-# stanli can build a model without its transformed parameters and generated
-# quantities -- when its interpreter fails on them too -- and then only warns, so the
-# fit would silently lack variables the caller's code looks for. stanli 0.24.0 did
-# this for OncoBayes2's combination models; 0.25.0 computes them. Kept as a guard:
-# refuse such a model; callers that have a compiled model to fall back on catch the
-# condition's class.
-stanli_model_complete <- function(...) {
-  withCallingHandlers(
-    stanli::stanli_model(...),
-    warning = function(w) {
-      msg <- conditionMessage(w)
-      if (grepl("generated quantities are unavailable", msg, fixed = TRUE)) {
-        stop(structure(class = c("stanliWebR_incomplete_model", "error", "condition"), list(
-          message = paste0(
-            "stanli cannot compute this model's transformed parameters and generated ",
-            "quantities, so its draws would lack them. stanli says:\n", msg
-          ),
-          call = NULL
-        )))
-      }
-    }
+# stanli::stanli_model(), in fast mode under options(stanliWebR.fast_math = TRUE).
+webr_stanli_model <- function(...) {
+  stanli::stanli_model(..., fast_math = fast_math_option())
+}
+
+# The stanli::sample_model() arguments a run on workers honours.
+worker_sample_args <- c(
+  "chains", "seed", "warmup", "samples", "thin", "delta", "max_depth", "save_warmup",
+  "init", "init_radius", "parallel_chains", "refresh", "threads_per_chain",
+  "fixed_param", "metric", "step_size", "adapt_engaged", "show_messages"
+)
+
+# stanli::sample_model(), with the chains on webR workers when more than one is to run
+# at once and workers are running. Defaults are stanli's.
+webr_sample_model <- function(model, ...) {
+  args <- list(...)
+  chains <- args$chains %||% 4
+  if (isTRUE(args$fixed_param) || !use_workers(chains, args$parallel_chains %||% chains)) {
+    return(stanli::sample_model(model, ...))
+  }
+  unsupported <- setdiff(names(args), worker_sample_args)
+  if (length(unsupported)) {
+    stop("Not supported when chains run on webR workers: ",
+         paste(unsupported, collapse = ", "), call. = FALSE)
+  }
+  sample_on_workers(
+    model, chains = chains, seed = args$seed %||% 1,
+    init = args$init %||% args$init_radius %||% 2,
+    warmup = args$warmup %||% 1000, samples = args$samples %||% 1000,
+    thin = args$thin %||% 1, delta = args$delta %||% 0.8,
+    max_depth = args$max_depth %||% 10, save_warmup = isTRUE(args$save_warmup),
+    controls = Filter(Negate(is.null),
+                      args[c("metric", "step_size", "adapt_engaged", "show_messages")])
   )
 }
 
@@ -134,18 +137,17 @@ use_workers <- function(chains, cores) {
 # One single-chain run per worker, put back together as if sampled at once. Each
 # worker builds the model from the same code, data and seed, so transformed data
 # are identical across chains; chain k samples with chain_id = k.
-sample_on_workers <- function(model, code, data, chains, seed, init, warmup, samples,
-                              thin, delta, max_depth, threads, save_warmup, fast_math,
-                              controls) {
+sample_on_workers <- function(model, chains, seed, init, warmup, samples, thin, delta,
+                              max_depth, save_warmup, controls) {
   workers <- miraiWebR::status()$connections
   message("Sampling ", chains, " chains on ", min(chains, workers), " webR workers")
   ms <- lapply(seq_len(chains), function(k) {
     miraiWebR::mirai(do.call(f, a), .args = list(f = sample_chain, a = list(
-      code = code, data = data, seed = seed, chain_id = k,
+      code = model$model_code, data = model$source$data_json, seed = seed, chain_id = k,
       init = if (is.matrix(init)) init[k, , drop = FALSE] else init,
       warmup = warmup, samples = samples, thin = thin, delta = delta,
-      max_depth = max_depth, threads = threads, save_warmup = save_warmup,
-      fast_math = fast_math, controls = controls
+      max_depth = max_depth, threads = model$threads_per_chain, save_warmup = save_warmup,
+      fast_math = model$fast_math, controls = controls
     )))
   })
   # On any failure, or Stop, the other chains must not keep running.

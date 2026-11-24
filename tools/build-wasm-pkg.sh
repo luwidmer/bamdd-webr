@@ -36,7 +36,7 @@ fi
 root="$(cd "$(dirname "$0")/.." && pwd)"
 best="$root/vendor/BesT"
 docker_dir="$best/tools/webr/docker"
-image="rbest-wasm-native:${WEBR_TAG:-v0.6.0}"
+image="rbest-wasm-native:${WEBR_TAG:-v0.6.1}"
 stage="$root/build/wasm-build/$pkg"
 out="$root/build/wasm-extra"
 patch="$root/tools/wasm-patches/${pkg}_${version}.patch"
@@ -88,7 +88,7 @@ cd "$docker_dir"
 RBEST_SRC="$best" \
 RBEST_OUT="$stage" \
 CORP_CERTS_DIR="${CORP_CERTS_DIR:-$docker_dir/certs.d}" \
-WEBR_TAG="${WEBR_TAG:-v0.6.0}" \
+WEBR_TAG="${WEBR_TAG:-v0.6.1}" \
   docker compose run --rm \
     -v "$root/tools:/tools:ro" \
     -e WASM_PKG_TARBALL="/out/${pkg}_${version}.tar.gz" \

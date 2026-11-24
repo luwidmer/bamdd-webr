@@ -14,6 +14,16 @@
 #' rbmi's Stan program runs on stanli as it is. Starting values follow rstan: the
 #' MMRM estimates rbmi supplies are used for every name that is a Stan parameter,
 #' and the remaining parameters start uniform on (-2, 2) on the unconstrained scale.
+#' As in rstan, list-valued starting values are ignored. rbmi 1.7.1 and earlier pass
+#' the covariance estimates as per-group lists, so only `theta` starts from the MMRM
+#' fit; from openpharma/rbmi#609 on they come as arrays, and every parameter does.
+#'
+#' The sampler settings in `control_bayes(control = list(...))` reach stanli as
+#' they would reach rstan: `adapt_delta`, `max_treedepth`, `stepsize`, `metric`
+#' and `adapt_engaged`. Anything stanli cannot honour is refused.
+#'
+#' The two internals are checked against the rbmi code they were written from, so
+#' an rbmi release that changes them stops here instead of being silently replaced.
 #'
 #' @return `TRUE`, invisibly.
 #' @export
@@ -28,6 +38,12 @@ use_stanli_for_rbmi <- function() {
   patch_namespace("rbmi", list(
     get_stan_model = stanli_get_stan_model,
     fit_mcmc = stanli_fit_mcmc
+  ), fingerprints = list(
+    get_stan_model = "70f31d5f1bc6b492653f12d69e877df7",
+    fit_mcmc = c(
+      "7095cb6e113f2f4aebbdcd6a35121325", # rbmi 1.7.0, 1.7.1
+      "29a77c51955af609c95ca0aa4cf2ec43"  # openpharma/rbmi@2d7b92b: also stops on a failed sampler
+    )
   ))
 }
 
@@ -82,13 +98,19 @@ stanli_fit_mcmc <- function(designmat, outcome, group, subjid, visit, method, qu
   # control_bayes(...) forwards anything it does not recognise to rstan::sampling().
   unsupported <- setdiff(
     names(control),
-    c("warmup", "thin", "chains", "init", "seed", "iter", "refresh")
+    c("warmup", "thin", "chains", "init", "seed", "iter", "refresh", "control")
   )
   if (length(unsupported) > 0) {
     stop(
       "control_bayes() argument(s) not supported by stanli: ",
       paste(unsupported, collapse = ", ")
     )
+  }
+  sampler <- control$control
+  unsupported <- setdiff(names(sampler), rstan_controls)
+  if (length(unsupported)) {
+    stop("control entries not supported by stanli: ", paste(unsupported, collapse = ", "),
+         call. = FALSE)
   }
 
   fit <- sample_stanfit(
@@ -100,11 +122,15 @@ stanli_fit_mcmc <- function(designmat, outcome, group, subjid, visit, method, qu
     samples = control$iter - control$warmup,
     thin = control$thin,
     seed = control$seed,
-    init = rstan_init(per_group_init(control$init, stan_data$G), chains = control$chains),
-    # rstan's defaults; control_bayes() offers no way to change them.
-    delta = 0.8,
-    max_depth = 10,
+    init = rstan_init(control$init, chains = control$chains),
+    delta = sampler$adapt_delta %||% 0.8,
+    max_depth = sampler$max_treedepth %||% 10,
+    metric = sampler$metric,
+    step_size = sampler$stepsize,
+    adapt_engaged = sampler$adapt_engaged,
     refresh = if (quiet) 0 else control$refresh,
+    # rbmi's own fit_mcmc() hides the sampler's notices too, through record().
+    show_messages = !quiet,
     # rbmi asks rstan for these two only.
     pars = c("beta", "Sigma"),
     # rbmi checks for the class by name, which stanli's subclass does not pass; rbmi
@@ -114,28 +140,4 @@ stanli_fit_mcmc <- function(designmat, outcome, group, subjid, visit, method, qu
 
   check_mcmc(fit, method$n_samples)
   list(samples = extract_draws(fit, method$n_samples), fit = fit)
-}
-
-# rbmi fits the initial MMRM with one covariance per group even under
-# same_cov = TRUE, and passes one starting value per group, while the Stan program
-# then has a single group (G = 1). rstan reads only the values it needs; stanli
-# insists on the declared size, so keep the first G -- after checking that the
-# values dropped are copies of those kept.
-per_group_init <- function(init, G) {
-  if (!is.list(init)) {
-    return(init)
-  }
-  trim <- function(values) {
-    lapply(values, function(v) {
-      if (!is.list(v) || length(v) <= G) {
-        return(v)
-      }
-      if (G != 1L || !all(vapply(v, identical, logical(1), v[[1]]))) {
-        stop("rbmi supplied ", length(v), " per-group starting values for ", G,
-             " covariance group(s), and they differ", call. = FALSE)
-      }
-      v[seq_len(G)]
-    })
-  }
-  if (is.null(names(init))) lapply(init, trim) else trim(init)
 }

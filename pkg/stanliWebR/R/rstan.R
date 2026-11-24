@@ -32,43 +32,22 @@ stanli_sampling <- function(object, data = list(), pars = NA, chains = 4L, iter 
     stop("control entries not supported by stanli: ", paste(unsupported, collapse = ", "),
          call. = FALSE)
   }
-  fit <- tryCatch(sample_stanfit(
+  fit <- sample_stanfit(
     code = object@model_code, data = data, chains = chains, warmup = warmup,
     samples = iter - warmup, thin = thin, seed = seed, init = rstan_init(init, chains),
     delta = control$adapt_delta %||% 0.8, max_depth = control$max_treedepth %||% 10,
     refresh = if (isTRUE(show_messages)) refresh else 0, save_warmup = save_warmup,
     cores = cores, pars = if (identical(pars, NA)) NULL else pars, include = include,
     metric = control$metric, step_size = control$stepsize,
-    adapt_engaged = control$adapt_engaged
-  ), stanliWebR_incomplete_model = function(e) {
-    # A package's precompiled model still samples, with rstan, only more slowly --
-    # but not in webR: there all wasm modules share one symbol table, and once stanli's
-    # runtime is loaded a compiled rstan model crashes ("memory access out of bounds").
-    if (methods::is(object, "stanliWebR_stanmodel")) stop(e)
-    if (in_webr()) {
-      stop(structure(class = class(e), list(call = NULL, message = paste0(
-        conditionMessage(e), "\n\nIn webR rstan's compiled model cannot run once stanli is ",
-        "loaded. Restart R and run this without library(stanliWebR) to sample the model ",
-        "with rstan, which is slower."
-      ))))
-    }
-    message("stanli cannot compute all of this model's outputs; sampling it with rstan instead.")
-    rstan_method <- methods::selectMethod("sampling", "stanmodel")
-    rstan_method(
-      object, data = data, pars = pars, chains = chains, iter = iter, warmup = warmup,
-      thin = thin, seed = seed, init = init, check_data = check_data,
-      sample_file = sample_file, diagnostic_file = diagnostic_file, verbose = verbose,
-      algorithm = algorithm, control = control, include = include, cores = 1L,
-      open_progress = open_progress, show_messages = show_messages,
-      save_warmup = save_warmup, refresh = refresh
-    )
-  })
+    adapt_engaged = control$adapt_engaged, show_messages = isTRUE(show_messages)
+  )
   fit@model_name <- object@model_name
   fit
 }
 
-# Return `fun` with its one call to `from` replaced by a call to `to`. A function
-# that already calls `to` is returned as it is, so patching twice is harmless.
+# Return `fun` with its one use of `from` -- called, or taken as a value, as brms's
+# `fit_fun <- stanli::sample_model` does -- replaced by `to`. A function that already
+# uses `to` is returned as it is, so patching twice is harmless.
 swap_call <- function(fun, from, to) {
   if (!is.function(fun)) {
     stop("function to patch not found; stanliWebR needs updating", call. = FALSE)
@@ -76,6 +55,13 @@ swap_call <- function(fun, from, to) {
   found <- 0L
   done <- 0L
   walk <- function(e) {
+    if (identical(e, from)) {
+      found <<- found + 1L
+      return(to)
+    }
+    if (identical(e, to)) {
+      done <<- done + 1L
+    }
     if (!is.call(e)) {
       return(e)
     }
@@ -101,5 +87,3 @@ swap_call <- function(fun, from, to) {
   body(fun) <- new_body
   fun
 }
-
-in_webr <- function() grepl("emscripten", R.version$os, fixed = TRUE)

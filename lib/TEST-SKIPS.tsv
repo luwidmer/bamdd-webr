@@ -15,8 +15,6 @@ bridgesampling	test-stan_bridge_sampler_basic.R	stan_bridge_sampler in multicore
 bridgesampling	test-stan_bridge_sampler_bugs.R	bridge_sampler.stanfit multicore works for one-parameter model.	full	forks (parallel::mcfork); webR has no fork()
 bridgesampling	test-stan_bridge_sampler_bugs.R	subscript out of bounds error	full	the model uses Stan's pre-2.33 array syntax (int N[G]), which stanli does not parse
 bridgesampling	test-stan_bridge_sampler_bugs.R	turtle example	full	the model uses Stan's pre-2.33 array syntax (int y[nobs]), which stanli does not parse
-brms	tests.brmsfit-methods.R	loo has reasonable outputs	full	brms 2.23.0's test reads loo_compare()[2, 1], which loo 2.10 made the model name; fails natively too
-brms	tests.brmsterms.R	brmsterms handles very long RE terms	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
 bslib	test-page.R	page_sidebar()	both	snapshot differs from bslib's recording only in the sidebar icon's SVG style attribute (a dependency's version, not webR)
 callr	test-archs.R	r() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
 callr	test-archs.R	r_bg() to the other arch	full	needs a separate R process (callr/Rscript); webR has no processes
@@ -227,6 +225,9 @@ future	test-requestNode.R	(script)	full	needs a separate R process (callr/Rscrip
 future	test-sticky_globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future	test-tweak.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future	test-uuid.R	(script)	both	forks (parallel::mcfork); webR has no fork()
+future	test-value-interrupt-cancels-set.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-value.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
+future	test-worker-connection-leak-on-error.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future.apply	test-future_apply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
 future.apply	test-future_lapply,globals.R	(script)	both	needs a separate R process (callr/Rscript); webR has no processes
 future.apply	test-future_lapply.R	(script)	both	webR runs R with options(expressions = 400) (native R: 5000), so deep recursion stops
@@ -366,7 +367,7 @@ mmrm	test-interop-car.R	car emits a message about mmrm registration on load	full
 mmrm	test-skipping.R	get_compiler works as expected	both	calls system(); unsupported under Emscripten
 mmrm	test-skipping.R	is_using_clang gives the same information as R_compiled_by in recent R versions	both	calls system(); unsupported under Emscripten
 mmrm	test-skipping.R	is_using_clang works as expected	both	calls system(); unsupported under Emscripten
-OncoBayes2	test-blrm_exnex.R	blrm_exnex exits gracefully with an error message when Stan does not sample with rstan	full	stanliWebR rejects the test's deliberately misspelled control entry (aBapt_delta) up front with its own message; under rstan sampling fails and OncoBayes2 says 'Calling Stan failed.'
+OncoBayes2	test-blrm_exnex.R	blrm_exnex exits gracefully with an error message when Stan does not sample with rstan	full	stanli rejects the misspelled control entry itself ("control entries not supported by stanli: aBapt_delta") before sampling; the test expects rstan to sample nothing so that OncoBayes2 raises its generic "Calling Stan failed."
 otel	test-api-dev.R	dev API is up to date	full	needs the package's source tree (test_package_root()); the runner stages only tests/, as R CMD check does
 otel	test-defaults.R	setup_default_logger_provider	full	needs Suggests package otelsdk, not in the test library
 otel	test-defaults.R	setup_default_meter_provider	full	needs Suggests package otelsdk, not in the test library
@@ -505,7 +506,7 @@ purrr	test-map.R	requires output be length 1 and have common type	full	snapshot 
 QuickJSR	test_io_wrappers.R	(file)	both	calls system(); unsupported under Emscripten
 QuickJSR	test_os_exec_fork_safety.R	(file)	both	calls system(); unsupported under Emscripten
 QuickJSR	test_stdio_file_safety.R	(file)	both	calls system(); unsupported under Emscripten
-RBesT	test-gMAP-s2z.R	a degenerate intercept prior is rejected rather than silently wrong	full	stanli raises the model's transformed-data reject() as an R error, with the expected message; rstan prints it, and the test captures the printed message
+RBesT	test-gMAP-s2z.R	a degenerate intercept prior is rejected rather than silently wrong	full	stanli raises the guard's reject() ("s2z requires a strictly positive intercept prior sd!") as an R error; the test captures it from rstan's message stream, where rstan prints it and returns an empty fit
 rbmi	test-analyse.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
 rbmi	test-draws.R	(crash)	both	needs a listening socket (parallel clusters); webR has none
 rbmi	test-expand.R	fill_locf - works with data.frames & Dates	full	needs Suggests package lubridate, not in the test library
@@ -575,15 +576,13 @@ rstantools	test-rstan_config.R	(file)	both	needs Suggests package usethis, not i
 rstantools	test-rstan_create_package.R	(file)	both	needs Suggests package usethis, not in the test library
 S7	test-external-generic.R	new_method works with both hard and soft dependencies	both	needs a C toolchain to install source packages
 sass	test-font-objects.R	font_google(local = TRUE) basically works	full	needs network access
-stanli	test-cstanfit.R	serialized CmdStan-style methods load without either Stan frontend or runtime	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-ecosystem-registration.R	optional generics dispatch with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-fast-math.R	fast_math is off by default and opt-in per model	both	stanli's wasm runtime is built without threads
-stanli	test-posterior-ecosystem.R	saved fits retain the workflow in a fresh R session	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-rfit.R	native fit methods never load RStan or require a model runtime	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-live.R	a fresh session restores subclass draws and reports a missing handle	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-registration.R	a conflicting stanfit class does not prevent native APIs from loading	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit-registration.R	optional S4 methods register with either namespace load order	both	needs a separate R process (callr/Rscript); webR has no processes
-stanli	test-stanfit.R	serialized model-dependent calls fail safely without a live handle	both	needs a separate R process (callr/Rscript); webR has no processes
+stanli	test-install-dev.R	"latest" is still refused	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before refusing "latest"
+stanli	test-install-dev.R	installing dev replaces the pinned runtime and records its tag	both	stanli's wasm build bundles its runtime, which stanli_runtime_path() prefers to the download cache the test sets up
+stanli	test-install-dev.R	installing into a session that has a runtime loaded says to restart	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before downloading or warning
+stanli	test-install-dev.R	on Windows, replacing a loaded runtime stops before downloading	both	stanli's wasm build bundles its runtime, and stanli_install() returns that before downloading or refusing
+stanli	test-install-dev.R	the pinned runtime is found first, then the dev one	both	stanli's wasm build bundles its runtime, which stanli_runtime_path() prefers to the download cache the test sets up
+stanli	test-subprocess-guard.R	subprocess tests skip where R cannot start another process	both	expects subprocess_available() to be TRUE; webR has no processes, which is why stanli's other subprocess tests skip
+stanli	test-stanfit.R	rstan, bayesplot and loo consume the native in-memory fit	both	expects rstan's loo.stanfit() to apply r_eff, but rstan 2.39 (stan-dev/rstan "Add r_eff argument to loo method") defaults to r_eff = FALSE; with r_eff = TRUE the result matches stanli's exactly. Not a webR difference
 stringr	test-sub.R	bad vectorisation gives informative error	full	snapshot recorded with other versions of its dependencies (messages, hashes, print formats); not a webR difference
 tibble	test-vignette-digits.R	digits vignette	full	needs a separate R process (callr/Rscript); webR has no processes
 tibble	test-vignette-extending.R	extending vignette	full	needs a separate R process (callr/Rscript); webR has no processes

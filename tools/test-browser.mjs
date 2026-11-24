@@ -101,6 +101,8 @@ try {
           sys.source("/tmp/test-packages.R", envir = env)
           dir <- env$webrtest$stage("/home/web_user/.test-sources/${pkg}", "/tmp/work-${pkg}")
           suppressPackageStartupMessages(library(stanliWebR))
+          # miraiWebR's tests start their own workers; stanliWebR's expect them running.
+          if ("${pkg}" == "stanliWebR") suppressMessages(miraiWebR::daemons(2))
           res <- env$webrtest$run_testthat("${pkg}", dir)
           try(miraiWebR::daemons(0), silent = TRUE)
           as.character(jsonlite::toJSON(res, dataframe = "rows", auto_unbox = TRUE))

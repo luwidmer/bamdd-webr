@@ -3,17 +3,17 @@
 #
 # The bundled R version MUST match the contrib/<ver> directory used by
 # tools/build-library.R -- wasm packages built for a different R version will not
-# load. webR 0.6.0 bundles R 4.6.0. If you bump WEBR_VERSION here, update
+# load. webR 0.6.1 bundles R 4.6.0. If you bump WEBR_VERSION here, update
 # R_CONTRIB in tools/build-library.R and rebuild the library image.
 
 set -euo pipefail
 
-WEBR_VERSION="${WEBR_VERSION:-0.6.0}"
+WEBR_VERSION="${WEBR_VERSION:-0.6.1}"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dest="$root/vendor/webr"
 tarball="$root/vendor/webr-${WEBR_VERSION}.tar.gz"
-# Note: the git tag is v0.6.0 but the asset filename has no 'v'.
+# Note: the git tag is v0.6.1 but the asset filename has no 'v'.
 url="https://github.com/r-wasm/webr/releases/download/v${WEBR_VERSION}/webr-${WEBR_VERSION}.tar.gz"
 
 if [[ -f "$dest/webr.mjs" && "${FORCE:-0}" != "1" ]]; then

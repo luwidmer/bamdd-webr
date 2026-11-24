@@ -135,7 +135,7 @@ expected <- c(
   rnorm  = "f7ab8b90c877d416",
   stanli = "a4dfe4de2ebc7af2",
   brms   = "e87fd58366178dd9",
-  rbmi   = "0f8909106c87d728"
+  rbmi   = "d4e5334cea478dc9"
 )
 
 got <- vapply(results, fingerprint, character(1))

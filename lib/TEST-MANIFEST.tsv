@@ -52,7 +52,7 @@ src	bit	4.6.0	48fe21c5d04c7b724d695eeb60074395c0c631a7fb234e2075de92471445de08	h
 src	bit64	4.8.6	a5fcec17ba772a561a7375ca8fd966bdd5f20dd4e89b4dae07d7da933d554b45	https://cloud.r-project.org/src/contrib/bit64_4.8.6.tar.gz
 src	bitops	1.1-0	73f063f15c6334d769202a178f7dd5499bdd10044a4ffbef571be57cbcc68b22	https://cloud.r-project.org/src/contrib/bitops_1.1-0.tar.gz
 src	bridgesampling	1.2-1	e85f4fa1d1c226e485b5ffb71b83c6d80d7d6a1083795af3e526b9c87929e998	https://cloud.r-project.org/src/contrib/bridgesampling_1.2-1.tar.gz
-src	brms	2.23.0	b5f5bb5604ec3f87b3ad99f0da4e6a37d8c5488221e8abe459171340992c37a5	https://cloud.r-project.org/src/contrib/brms_2.23.0.tar.gz
+src	brms	2.23.2	4de4bd030d200fad850e491d908a70a37d65aba569bb79ab774186b63472a782	https://github.com/paul-buerkner/brms/archive/426188cdb88b194676af43731fc88b8259d3bae7.tar.gz
 src	Brobdingnag	1.3-1	fa29b44f58863a753e3d16d40e33c17be870ea3685d96b4196ec6f0117bd4e95	https://cloud.r-project.org/src/contrib/Brobdingnag_1.3-1.tar.gz
 src	bslib	0.12.0	26fc11793dc1fdccd6d8d2fc1d638c29c47aa0c2e5cbadc6a35af3819f5446d1	https://cloud.r-project.org/src/contrib/bslib_0.12.0.tar.gz
 src	cachem	1.1.0	550839fc2ae5d865db475ba2c1714144f07fa0c052c72135b0e4a70287492e21	https://cloud.r-project.org/src/contrib/cachem_1.1.0.tar.gz
@@ -78,7 +78,7 @@ src	forcats	1.0.1	1de46b83b7038a293e612775197b7ffe47bd079cd2385aa7c65e98171bbd36
 src	forestplot	3.2.0	1f6e4795fb7411a1161494ab6f592e32044f45253bb6a2e02bbca4ac146102e7	https://cloud.r-project.org/src/contrib/forestplot_3.2.0.tar.gz
 src	Formula	1.2-6	7e611ac371c045e100a6205d92fe5104001942673798f970290fea12e33bfd37	https://cloud.r-project.org/src/contrib/Formula_1.2-6.tar.gz
 src	fs	2.1.0	7088af1117d65c4ceb144b532e323f197fc8243b1d704bf6edf40774789829cd	https://cloud.r-project.org/src/contrib/fs_2.1.0.tar.gz
-src	future	1.76.0	0d78c3cfc53db83a1ea5aedbf100f5f73f55cda013a50a8ca2dcaddec7c37c0a	https://cloud.r-project.org/src/contrib/Archive/future/future_1.76.0.tar.gz
+src	future	1.82.0	30a6eeb5289f70f81f86eb2d379caba5cf36604299e689907d92710c45f7e946	https://cloud.r-project.org/src/contrib/future_1.82.0.tar.gz
 src	future.apply	1.20.2	30d6b64c93a1c40fc1b07e21503fce811707fc30589145832ce0b8947ce74bdf	https://cloud.r-project.org/src/contrib/Archive/future.apply/future.apply_1.20.2.tar.gz
 src	generics	0.1.4	bbe95a097792d38fc3b7e677738af1b95b66ea5e5017e33b8beac6a6088d0801	https://cloud.r-project.org/src/contrib/generics_0.1.4.tar.gz
 src	ggdist	3.3.3	f35563b2ab9799f47db9ae90da3434cc0fa436426e979d0f143308510dfd3673	https://cloud.r-project.org/src/contrib/ggdist_3.3.3.tar.gz
@@ -146,7 +146,7 @@ src	R6	2.6.1	59c6eba8b1b912eb7e104f65053235604be853425ee67c152ac4e86a1f2073b4	ht
 src	rappdirs	0.3.4	2320ebc9ef3b1a32a1e63f94a6ce2c1c34d66782221a6531e786804f681abc66	https://cloud.r-project.org/src/contrib/rappdirs_0.3.4.tar.gz
 src	RBesT	1.12-0	95dc0557c0a01115d8e97008b8e09281c3fe9d568afd878347d0e3cd2e761239	https://cloud.r-project.org/src/contrib/RBesT_1.12-0.tar.gz
 src	rbibutils	2.4.1	da313d920a0f35ffdf30a54929ba8904b2b5a0d7f11a519db8674148129c8f32	https://cloud.r-project.org/src/contrib/rbibutils_2.4.1.tar.gz
-src	rbmi	1.7.0	bc3fe27692ab4af1afc27eeea8cc81656d1f1b537b072dfba084efa812eef289	https://github.com/insightsengineering/rbmi/archive/11dc355b54e394ae47c15bb304e6bc39581b2de0.tar.gz
+src	rbmi	1.7.1.9000	1d7e488012927323f71ffc3ef295047af8ecaa939c4db33aff835fc08490d49b	https://github.com/openpharma/rbmi/archive/2d7b92b25a69289c2d297aaf65dee55d8d643c6f.tar.gz
 src	RColorBrewer	1.1-3	4f42f5423c45688b39f492c7892d93f37b4541831c8ffb140364d2bd89031ac0	https://cloud.r-project.org/src/contrib/RColorBrewer_1.1-3.tar.gz
 src	Rcpp	1.1.2	2746cf2fb188e5f0a84dbf5c8f68915b54564ed33e5754572f174e7b32e7f4f3	https://cloud.r-project.org/src/contrib/Rcpp_1.1.2.tar.gz
 src	RcppParallel	5.1.11-2	350d013d62cd80175e1b13fd5bbf973755e331a5d4d4590a163778a24b27980b	https://cloud.r-project.org/src/contrib/Archive/RcppParallel/RcppParallel_5.1.11-2.tar.gz
@@ -158,15 +158,15 @@ src	reshape2	1.4.5	0ead5acd0153e5073b3c24e8e782982a4eab3aaa768ba17700d796fb13b68
 src	rlang	1.3.0	80aa537d49e72265f443a15e8936128af583caa5e572086518b503cbf064279c	https://cloud.r-project.org/src/contrib/rlang_1.3.0.tar.gz
 src	rmarkdown	2.32	f7fab8ae670d18a4b91409d11e4275b565c4081d77c4522443d01f94a8c2acee	https://cloud.r-project.org/src/contrib/rmarkdown_2.32.tar.gz
 src	rprojroot	2.1.1	473989bbef45fd9cd68f68dc317b14c9f42de5cea4b55fd6ba9011f25e0517e9	https://cloud.r-project.org/src/contrib/rprojroot_2.1.1.tar.gz
-src	rstan	2.32.7	5931cf77fb01672f962c203c49bb4508f86f55553cac97f58ff0c7a55b72174a	https://cloud.r-project.org/src/contrib/rstan_2.32.7.tar.gz
+src	rstan	2.39.0.9000	26fe605899c65df2f78ffc09443fab0db343d9e8441fa840ce3754c549b2ba62	https://github.com/stan-dev/rstan/archive/6d858e0a7e16931334f7dd4e84270ee504a0852f.tar.gz#rstan/rstan
 src	rstantools	2.7.1	d8339de70d3b42c4fe77e53ba5a47a96abbffbcfe31619c608f67c44116b7d14	https://cloud.r-project.org/src/contrib/rstantools_2.7.1.tar.gz
 src	S7	0.2.2	6f33245dde05b74265b1c4d379e034bc3a8923d41e7b52e6e75a75ce97d42af7	https://cloud.r-project.org/src/contrib/S7_0.2.2.tar.gz
 src	sass	0.4.10	4adb4c243f74d811276529e346deaa064bce28dbfbb837208fc85f2c47b79b30	https://cloud.r-project.org/src/contrib/sass_0.4.10.tar.gz
 src	scales	1.4.0	d55ef5f08c92652d7a95cfa27584024723ab17873f1b2577dd488cb7c883ceee	https://cloud.r-project.org/src/contrib/scales_1.4.0.tar.gz
 src	simsurv	1.0.1	6ee9c14d40f104ae626e24103560d1532403361c5ca3e0c022b49f5871b610b1	https://cloud.r-project.org/src/contrib/simsurv_1.0.1.tar.gz
-src	StanHeaders	2.39.1	db87db967b6c908d1bf841cc667c3298648b067b060c3395ebc288287eec206b	https://cloud.r-project.org/src/contrib/StanHeaders_2.39.1.tar.gz
-src	stanli	0.25.0	2a159ca1e085007a14b6d2ea6ce276e1836ab0347bc04ee76ee3c59f18890694	https://github.com/seantalts/stanli/archive/bc66380ed8f4bccf3ad21c189fed95d804c6ccde.tar.gz#r
-src	stanliWebR	0.8.1	-	local:pkg/stanliWebR
+src	StanHeaders	2.39.1.1	025e433e64f94667f3649466a8c2d45da64af05308e884959dea09b71eada706	https://cloud.r-project.org/src/contrib/StanHeaders_2.39.1.1.tar.gz
+src	stanli	0.31.0	c2c9b5b52962b6ed1b588dfcf2889b5fc8885ee568d56ac005b25e7e655963b1	https://github.com/seantalts/stanli/archive/f29a7cfc808ee5a5d7d14884ab4b85931eee156f.tar.gz#r
+src	stanliWebR	0.10.1	-	local:pkg/stanliWebR
 src	statmod	1.5.2	5f83d82043c5e26f1048fc0139580da1b7e40becf95fb4cb26ed3afcd46a581d	https://cloud.r-project.org/src/contrib/statmod_1.5.2.tar.gz
 src	stringi	1.8.9	427fcebd281d7ea850becce75e0807576dd394a723a814b2d487419b93275a33	https://cloud.r-project.org/src/contrib/stringi_1.8.9.tar.gz
 src	stringr	1.6.0	24f2fc5df980a7eb888659e22b9744d2316c558624015c7a7cd8c3ce3e370064	https://cloud.r-project.org/src/contrib/stringr_1.6.0.tar.gz

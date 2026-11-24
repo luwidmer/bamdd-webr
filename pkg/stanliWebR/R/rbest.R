@@ -14,10 +14,8 @@
 #'
 #' Should stanli be unable to compute a model's transformed parameters and
 #' generated quantities (as stanli 0.24.0 was for OncoBayes2's combination
-#' models), the package's compiled rstan model samples it instead, rather than
-#' returning draws without them. In webR that model cannot run once stanli is
-#' loaded, so there it is an error that says to restart R and sample without
-#' stanliWebR.
+#' models), sampling stops with an error rather than returning draws without
+#' them; the packages' compiled rstan models are not used.
 #'
 #' @return `TRUE`, invisibly.
 #' @export

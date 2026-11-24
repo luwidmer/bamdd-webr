@@ -1,8 +1,8 @@
 # brms running entirely in your browser.
 #
 # There is no C++ toolchain here: the model is sampled by stanli, an interpreter for
-# Stan, which stanliWebR plugs in under brms's default rstan backend. Nothing is sent
-# to a server.
+# Stan, through brms's own stanli backend, which stanliWebR makes the default. Nothing
+# is sent to a server.
 #
 # Two caveats specific to WebAssembly:
 #   * chains run one after another, because this R session is single-threaded

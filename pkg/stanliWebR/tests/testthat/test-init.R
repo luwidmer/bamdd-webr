@@ -27,12 +27,19 @@ test_that("starting values come from the run's seed, not R's stream", {
   expect_false(identical(a[1, ], a[2, ]))
 })
 
-test_that("rbmi's per-group starting values are trimmed to one shared group", {
-  per_group_init <- stanliWebR:::per_group_init
-  same <- list(beta = 1, sigma = list(diag(2), diag(2)))
-  expect_identical(per_group_init(same, 1L)$sigma, list(diag(2)))
-  expect_identical(per_group_init(same, 2L), same)
-  expect_identical(per_group_init("random", 1L), "random")
-  differ <- list(beta = 1, sigma = list(diag(2), 2 * diag(2)))
-  expect_error(per_group_init(differ, 1L), "they differ")
+test_that("list-valued starting values are ignored, as rstan ignores them", {
+  code <- "
+    parameters { real mu; array[2] real<lower=-1, upper=1> rho; array[2] cov_matrix[2] S; }
+    model { mu ~ normal(0, 1); for (g in 1:2) S[g] ~ wishart(4, diag_matrix(rep_vector(1, 2))); }
+  "
+  model <- stanli::stanli_model(code = code, data = list(), seed = 1)
+  only_mu <- rstan_init(list(mu = 1), 2)(model, 9)
+  # As rbmi supplies them: one per group, named by group.
+  named <- rstan_init(list(mu = 1, rho = list(DRUG = 0.6, PLACEBO = 0.2),
+                           S = list(DRUG = diag(2), PLACEBO = 2 * diag(2))), 2)(model, 9)
+  unnamed <- rstan_init(list(mu = 1, rho = list(0.6, 0.2), S = list(diag(2), 2 * diag(2))), 2)(model, 9)
+  expect_identical(named, only_mu)
+  expect_identical(unnamed, only_mu)
+  expect_equal(unname(rstan_init(list(mu = 1, rho = c(0.6, 0.2)), 1)(model, 9)[1, 2:3]),
+               qlogis((c(0.6, 0.2) + 1) / 2))
 })
