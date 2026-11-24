@@ -1,6 +1,6 @@
 {
   "name": "bamdd-webr-tooling",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Dev-only tooling. The app itself ships no npm dependencies; vendored UI libraries come from tools/fetch-ui-libs.sh.",
   "type": "module",
