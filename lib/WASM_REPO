@@ -1,4 +1,4 @@
 # Written by .github/workflows/wasm-repo.yml; see "The wasm package bundle" in DEPLOY.md.
-TAG=wasm-repo-20261030-9d397a1
-SHA256=217a01b6aca9c2985572b868ae20f9ddefc1f517b57d12c80b04b783a1b5f3ed
-PACKAGES_SHA256=7b3e70b028f03561a5a70ef9289c8ecfdd881168e941e26b3b596bd00e5eab89
+TAG=wasm-repo-20261125-f0b1623
+SHA256=cc000fe836d0c402cbe9b6ed0426cabf2f6a81a55ce6e6e552e43df22622de9a
+PACKAGES_SHA256=554e7689d31fc8aa7e4bf01f8917122abba335fb4b6b700103bdd0df71326623
